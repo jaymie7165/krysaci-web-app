@@ -1,4 +1,4 @@
-# KRYSÁCI – web pro hráče a esport komunitu
+# Play Haven – web pro hráče a esport komunitu
 
 Next.js 15 (App Router) + PostgreSQL (Prisma) + přihlášení přes Discord. Jazyky: čeština, slovenština, angličtina.
 
@@ -32,7 +32,7 @@ npm run dev               # http://localhost:3000
    - `AUTH_DISCORD_ID`, `AUTH_DISCORD_SECRET` – z https://discord.com/developers/applications
    - `BOT_API_KEY` – libovolný dlouhý náhodný řetězec (sdílíš ho s botem)
    - `ADMIN_DISCORD_IDS` – tvoje Discord ID (admin po přihlášení)
-   - `NEXT_PUBLIC_SITE_URL` – veřejná adresa (např. `https://krysaci.up.railway.app`)
+   - `NEXT_PUBLIC_SITE_URL` – veřejná adresa (např. `https://playhaven.up.railway.app`)
 5. V Settings → Networking vygeneruj doménu.
 6. V Discord Developer Portalu (OAuth2 → Redirects) přidej:
    `https://TVOJE-DOMENA/api/auth/callback/discord`
