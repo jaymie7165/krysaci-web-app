@@ -1,17 +1,16 @@
 import Link from "next/link";
 import { auth, signIn, signOut } from "@/lib/auth";
-import { getT, LOCALES } from "@/lib/i18n";
+import { getT, pick, LOCALES } from "@/lib/i18n";
 import { setLang } from "@/app/actions";
-import NavLinks from "./NavLinks";
+import NavLinks, { type NavGroup } from "./NavLinks";
 
 function Logo() {
   return (
-    <Link href="/" className="flex items-center gap-2.5" aria-label="Play Haven">
-      <svg viewBox="0 0 64 64" className="h-8 w-8" aria-hidden="true">
-        <path d="M14 50V30a18 18 0 0 1 36 0v20z" fill="none" stroke="#ece7db" strokeWidth="4" strokeLinejoin="round" />
-        <circle cx="32" cy="36" r="6" fill="#f2a93b" />
-      </svg>
-      <span className="font-display text-xl font-bold tracking-tight text-bone">Play Haven</span>
+    <Link href="/" className="flex items-center gap-3" aria-label="Play Haven">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/brand/logo-mark.png" alt="" className="h-10 w-auto" />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/brand/logo-wordmark.png" alt="Play Haven" className="h-3.5 w-auto" />
     </Link>
   );
 }
@@ -19,20 +18,40 @@ function Logo() {
 export default async function Nav() {
   const session = await auth();
   const { t, locale } = await getT();
+  const user = session?.user;
 
-  const links: [string, string][] = [
-    ["/", "Hub"],
-    ["/games", t("nav_games")],
-    ["/players", t("nav_players")],
-    ["/leaderboards", t("nav_leaderboards")],
-    ["/tournaments", t("nav_tournaments")],
-    ["/customs", t("nav_customs")],
-    ["/lfg", t("nav_lfg")],
-    ["/vote", t("nav_vote")],
+  const groups: NavGroup[] = [
+    {
+      links: [
+        ["/", "Hub"],
+        ["/lookup", pick(locale, "Statistiky", "Štatistiky", "Stats")],
+      ],
+    },
+    {
+      title: pick(locale, "Komunita", "Komunita", "Community"),
+      links: [
+        ["/players", t("nav_players")],
+        ["/lfg", t("nav_lfg")],
+        ...(user ? ([["/friends", t("nav_friends")]] as [string, string][]) : []),
+      ],
+    },
+    {
+      title: pick(locale, "Soutěže", "Súťaže", "Compete"),
+      links: [
+        ["/tournaments", t("nav_tournaments")],
+        ["/customs", t("nav_customs")],
+        ["/leaderboards", t("nav_leaderboards")],
+      ],
+    },
+    {
+      title: pick(locale, "Další", "Ďalšie", "More"),
+      links: [
+        ["/games", t("nav_games")],
+        ["/vote", t("nav_vote")],
+        ...(user ? ([["/tickets", t("nav_tickets")]] as [string, string][]) : []),
+      ],
+    },
   ];
-  if (session?.user) {
-    links.push(["/friends", t("nav_friends")], ["/tickets", t("nav_tickets")]);
-  }
 
   const langs = (
     <div className="flex gap-1">
@@ -50,25 +69,7 @@ export default async function Nav() {
     </div>
   );
 
-  const account = session?.user ? (
-    <div className="flex items-center gap-2">
-      <Link href={`/players/${session.user.handle}`} className="flex min-w-0 items-center gap-2">
-        {session.user.image && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={session.user.image} alt="" className="h-8 w-8 shrink-0 rounded-full" />
-        )}
-        <span className="truncate text-sm font-medium text-white">{session.user.name}</span>
-      </Link>
-      <form
-        action={async () => {
-          "use server";
-          await signOut({ redirectTo: "/" });
-        }}
-      >
-        <button className="rounded-md px-2 py-1 text-xs text-slate-400 hover:text-white">{t("logout")}</button>
-      </form>
-    </div>
-  ) : (
+  const loginForm = (
     <form
       action={async () => {
         "use server";
@@ -79,6 +80,35 @@ export default async function Nav() {
     </form>
   );
 
+  const account = user ? (
+    <div className="space-y-2">
+      <Link href={`/players/${user.handle}`} className="flex min-w-0 items-center gap-2">
+        {user.image ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={user.image} alt="" className="h-9 w-9 shrink-0 rounded-full" />
+        ) : (
+          <span className="h-9 w-9 shrink-0 rounded-full bg-ink-600" />
+        )}
+        <span className="truncate text-sm font-medium text-white">{user.name}</span>
+      </Link>
+      <div className="flex items-center justify-between text-xs">
+        <Link href="/account" className="text-slate-400 hover:text-white">
+          {pick(locale, "Propojené účty", "Prepojené účty", "Linked accounts")}
+        </Link>
+        <form
+          action={async () => {
+            "use server";
+            await signOut({ redirectTo: "/" });
+          }}
+        >
+          <button className="text-slate-400 hover:text-white">{t("logout")}</button>
+        </form>
+      </div>
+    </div>
+  ) : (
+    loginForm
+  );
+
   return (
     <aside className="border-b border-ink-600/50 bg-ink-900 lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-r">
       {/* Mobil: horní lišta */}
@@ -87,28 +117,30 @@ export default async function Nav() {
           <Logo />
           <div className="flex items-center gap-3">
             {langs}
-            {session?.user ? (
-              <Link href={`/players/${session.user.handle}`} aria-label={t("nav_profile")}>
-                {session.user.image && (
+            {user ? (
+              <Link href={`/players/${user.handle}`} aria-label={t("nav_profile")}>
+                {user.image ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={session.user.image} alt="" className="h-8 w-8 rounded-full" />
+                  <img src={user.image} alt="" className="h-8 w-8 rounded-full" />
+                ) : (
+                  <span className="block h-8 w-8 rounded-full bg-ink-600" />
                 )}
               </Link>
             ) : (
-              account
+              loginForm
             )}
           </div>
         </div>
-        <NavLinks links={links} orientation="horizontal" />
+        <NavLinks groups={groups} orientation="horizontal" />
       </div>
 
       {/* Desktop: boční panel */}
-      <div className="hidden h-full flex-col gap-6 p-4 lg:flex">
-        <div className="px-2 pt-1">
+      <div className="hidden h-full flex-col gap-7 p-4 lg:flex">
+        <div className="px-2 pt-2">
           <Logo />
         </div>
         <div className="flex-1 overflow-y-auto">
-          <NavLinks links={links} orientation="vertical" />
+          <NavLinks groups={groups} orientation="vertical" />
         </div>
         <div className="space-y-3 border-t border-ink-600/50 pt-4">
           {langs}

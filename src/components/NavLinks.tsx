@@ -3,32 +3,45 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+export type NavGroup = { title?: string; links: readonly (readonly [string, string])[] };
+
 export default function NavLinks({
-  links,
+  groups,
   orientation,
 }: {
-  links: readonly (readonly [string, string])[];
+  groups: NavGroup[];
   orientation: "vertical" | "horizontal";
 }) {
   const pathname = usePathname();
-  const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");
+  const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/"));
+
+  const item = (href: string, label: string, extra = "") => (
+    <Link
+      key={href}
+      href={href}
+      data-active={isActive(href)}
+      aria-current={isActive(href) ? "page" : undefined}
+      className={`rail-link ${extra}`}
+    >
+      {label}
+    </Link>
+  );
+
+  if (orientation === "horizontal") {
+    return (
+      <nav className="flex gap-1 overflow-x-auto px-3 pb-2">
+        {groups.flatMap((g) => g.links.map(([href, label]) => item(href, label, "whitespace-nowrap")))}
+      </nav>
+    );
+  }
 
   return (
-    <nav
-      className={
-        orientation === "vertical" ? "flex flex-col gap-0.5" : "flex gap-1 overflow-x-auto px-3 pb-2"
-      }
-    >
-      {links.map(([href, label]) => (
-        <Link
-          key={href}
-          href={href}
-          data-active={isActive(href)}
-          aria-current={isActive(href) ? "page" : undefined}
-          className={`rail-link ${orientation === "horizontal" ? "whitespace-nowrap" : ""}`}
-        >
-          {label}
-        </Link>
+    <nav className="flex flex-col gap-5">
+      {groups.map((g, i) => (
+        <div key={g.title ?? i} className="flex flex-col gap-0.5">
+          {g.title && <p className="px-3 pb-1 text-xs font-semibold text-slate-500">{g.title}</p>}
+          {g.links.map(([href, label]) => item(href, label))}
+        </div>
       ))}
     </nav>
   );
