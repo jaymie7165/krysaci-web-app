@@ -1,23 +1,23 @@
 import type { Config } from "tailwindcss";
 
-// Play Haven – přílivová modrozelená (základ), lucerna (akce), mořské sklo (progres).
+// Play Haven – noční fialová (základ), fialový akcent, mint pro výhry a progres.
 const config: Config = {
   content: ["./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
       colors: {
-        ink: { 950: "#08171d", 900: "#0c1f27", 800: "#112a34", 700: "#183743", 600: "#234856" },
-        accent: { DEFAULT: "#f2a93b", soft: "#f7c46f" },
-        pulse: "#7fd1b9",
-        ember: "#f1705f",
-        bone: "#ece7db",
+        ink: { 950: "#0a0814", 900: "#110d22", 800: "#18122f", 700: "#231b44", 600: "#332a5e" },
+        accent: { DEFAULT: "#8b5cf6", soft: "#b79cff" },
+        pulse: "#5fd6a4",
+        ember: "#ff6b81",
+        bone: "#ece9f8",
       },
       fontFamily: {
         display: ["Bricolage Grotesque", "system-ui", "sans-serif"],
         sans: ["Figtree", "system-ui", "sans-serif"],
       },
       boxShadow: {
-        glow: "0 0 0 1px rgba(242,169,59,0.5), 0 12px 32px -12px rgba(242,169,59,0.35)",
+        glow: "0 0 0 1px rgba(139,92,246,0.55), 0 12px 32px -12px rgba(139,92,246,0.45)",
       },
     },
   },

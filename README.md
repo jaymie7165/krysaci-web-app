@@ -41,6 +41,22 @@ Při startu se automaticky spustí `prisma db push` a seed her (`npm run start`)
 
 > Pozor: `prisma db push` je pohodlné pro rychlý start. Až budou v databázi ostrá data, přejdi na `prisma migrate` (`npm run db:migrate` lokálně a `prisma migrate deploy` při startu), aby změny schématu nemohly nic smazat.
 
+## Statistiky a propojení účtů
+
+| Funkce | Co potřebuje | Poznámka |
+| --- | --- | --- |
+| Steam (nick, avatar, naposledy hrané hry) | `STEAM_API_KEY` (zdarma) | Hráč se přihlásí přes Steam, takže je vlastnictví ověřené automaticky. |
+| LoL statistiky (rank, zápasy, nejhranější šampioni) | `RIOT_API_KEY` | Vyhledání kohokoliv přes Riot ID. Vlastní hry (customky) se nezobrazují. |
+| Ověření Riot účtu | `RIOT_API_KEY` | Hráč si na pár minut nastaví v LoL přidělenou ikonu. |
+| Valorant rank | `HENRIK_API_KEY` | Jen u ověřených hráčů, kteří sdílení sami zapnuli. Používá neoficiální službu HenrikDev. |
+
+**Riot API klíče.** Osobní klíč je určený pro osobní projekty a vyprší po 24 hodinách. Web, který ukazuje statistiky
+cizích hráčů, má být u Riotu zaregistrovaný jako produkt (Production key). Na webu musí být viditelné upozornění,
+že Riot Games projekt neschvaluje (je v patičce). Zkontroluj aktuální podmínky na https://developer.riotgames.com.
+
+**Steam.** V Discord redirectu nic nepřidáváš. Návratová adresa Steamu je `https://TVOJE-DOMENA/api/connect/steam/callback`
+a řídí se proměnnou `AUTH_URL` (nebo `NEXT_PUBLIC_SITE_URL`).
+
 ## Propojení s Discord botem (discord.js)
 
 Všechny požadavky mají hlavičku `x-bot-key: <BOT_API_KEY>`.
