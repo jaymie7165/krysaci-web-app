@@ -38,7 +38,7 @@ model User {
   handle      String   @unique
   avatarUrl   String?
   bio         String?
-  accent      String   @default("#f2a93b")
+  accent      String   @default("#8b5cf6")
   locale      String   @default("cs")
   role        Role     @default(USER)
   createdAt   DateTime @default(now())
@@ -58,6 +58,7 @@ model User {
   ticketMessages TicketMessage[]
   suggestions    GameSuggestion[]
   votes          GameVote[]
+  linkedAccounts LinkedAccount[]
 }
 
 model Game {
@@ -247,4 +248,35 @@ model GameVote {
   user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([suggestionId, userId])
+}
+
+/// Propojený externí účet hráče (Steam nebo Riot). Jeden účet od každého poskytovatele na hráče.
+model LinkedAccount {
+  id           String   @id @default(cuid())
+  userId       String
+  provider     String   // "steam" | "riot"
+  externalId   String   // steamid64 nebo Riot PUUID
+  displayName  String   // Steam nick nebo Riot ID (Jmeno#TAG)
+  gameName     String?  // Riot: část před #
+  tagLine      String?  // Riot: část za #
+  region       String?  // Riot: platforma LoL, např. eun1
+  avatarUrl    String?
+  profileUrl   String?
+  verified     Boolean  @default(false)
+  shareValorant Boolean @default(false) // souhlas hráče se zobrazením Valorant dat
+  verifyIcon   Int?     // Riot: ikona, kterou má hráč nastavit pro ověření vlastnictví
+  createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
+  // Neověřené propojení nesmí blokovat skutečného majitele, proto tu není unique.
+  // Jeden OVĚŘENÝ vlastník na účet se hlídá v kódu.
+  @@index([provider, externalId])
+}
+
+/// Krátkodobá cache odpovědí externích API (šetří limity Riot / Steam).
+model StatCache {
+  key       String   @id
+  data      Json
+  fetchedAt DateTime @default(now())
 }
