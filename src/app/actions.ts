@@ -31,7 +31,7 @@ export async function updateProfile(fd: FormData) {
       bio: z.string().max(400),
       accent: z.string().regex(/^#[0-9a-fA-F]{6}$/),
     })
-    .safeParse({ bio: str(fd, "bio"), accent: str(fd, "accent") || "#7c5cff" });
+    .safeParse({ bio: str(fd, "bio"), accent: str(fd, "accent") || "#f2a93b" });
   if (!data.success) return;
   await db.user.update({ where: { id: u.id }, data: { bio: data.data.bio || null, accent: data.data.accent } });
   revalidatePath(`/players/${u.handle}`);
