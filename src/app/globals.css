@@ -10,7 +10,7 @@ body {
 
 h1, h2, h3 { @apply font-display text-bone; letter-spacing: -0.01em; }
 
-:focus-visible { outline: 2px solid #f2a93b; outline-offset: 2px; }
+:focus-visible { outline: 2px solid #8b5cf6; outline-offset: 2px; }
 
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
@@ -18,7 +18,7 @@ h1, h2, h3 { @apply font-display text-bone; letter-spacing: -0.01em; }
 
 @layer components {
   .card { @apply rounded-2xl border border-ink-600/60 bg-ink-800; }
-  .btn { @apply inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-ink-950 transition hover:bg-accent-soft disabled:opacity-50; }
+  .btn { @apply inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:bg-accent-soft disabled:opacity-50; }
   .btn-ghost { @apply inline-flex items-center justify-center gap-2 rounded-xl border border-ink-600 px-4 py-2 text-sm font-medium text-bone transition hover:border-accent hover:text-white; }
   .input { @apply w-full rounded-xl border border-ink-600 bg-ink-900 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-accent focus:outline-none; }
   .label { @apply mb-1 block text-xs font-semibold text-slate-400; }

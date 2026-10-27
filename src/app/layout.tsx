@@ -28,7 +28,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <Nav />
           <div className="min-w-0">
             <main className="mx-auto min-h-[75vh] max-w-6xl px-4 py-8 lg:px-10 lg:py-10">{children}</main>
-            <footer className="px-4 py-8 text-sm text-slate-500 lg:px-10">{t("footer")}</footer>
+            <footer className="max-w-3xl space-y-2 px-4 py-8 text-xs leading-relaxed text-slate-500 lg:px-10">
+              <p>{t("footer")}</p>
+              <p>
+                Play Haven isn&apos;t endorsed by Riot Games and doesn&apos;t reflect the views or opinions of Riot Games
+                or anyone officially involved in producing or managing Riot Games properties. Riot Games and all
+                associated properties are trademarks or registered trademarks of Riot Games, Inc. Steam is a trademark
+                of Valve Corporation.
+              </p>
+            </footer>
           </div>
         </div>
       </body>
