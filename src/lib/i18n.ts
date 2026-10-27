@@ -347,3 +347,8 @@ export function dateFmt(locale: Locale, d: Date) {
   const tag = locale === "cs" ? "cs-CZ" : locale === "sk" ? "sk-SK" : "en-GB";
   return new Intl.DateTimeFormat(tag, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Prague" }).format(d);
 }
+
+/** Krátký výběr textu podle jazyka pro stránky, které nemají vlastní klíče ve slovníku. */
+export function pick(locale: Locale, cs: string, sk: string, en: string) {
+  return locale === "cs" ? cs : locale === "sk" ? sk : en;
+}
