@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { getT, dateFmt } from "@/lib/i18n";
 import { sendFriendRequest, updateProfile, saveGameProfile } from "@/app/actions";
 import GameSelect from "@/components/GameSelect";
+import LinkedAccountsSection from "@/components/LinkedAccountsSection";
 
 export default async function PlayerPage({ params }: { params: Promise<{ handle: string }> }) {
   const { handle } = await params;
@@ -35,7 +36,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ handle:
   return (
     <div className="space-y-8">
       <section className="card overflow-hidden">
-        <div className="h-28" style={{ background: `linear-gradient(120deg, ${player.accent}, #0b0d14)` }} />
+        <div className="h-28" style={{ background: `linear-gradient(120deg, ${player.accent}, #0d0a1a)` }} />
         <div className="flex flex-wrap items-end gap-5 px-6 pb-6">
           {player.avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -59,6 +60,8 @@ export default async function PlayerPage({ params }: { params: Promise<{ handle:
           {friendship?.status === "PENDING" && <span className="badge">{t("pending")}</span>}
         </div>
       </section>
+
+      <LinkedAccountsSection userId={player.id} locale={locale} isMe={isMe} />
 
       <section>
         <h2 className="mb-3 text-2xl font-semibold">{t("stats")}</h2>
