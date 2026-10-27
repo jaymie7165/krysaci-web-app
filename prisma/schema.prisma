@@ -38,7 +38,7 @@ model User {
   handle      String   @unique
   avatarUrl   String?
   bio         String?
-  accent      String   @default("#7c5cff")
+  accent      String   @default("#f2a93b")
   locale      String   @default("cs")
   role        Role     @default(USER)
   createdAt   DateTime @default(now())
