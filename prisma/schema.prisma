@@ -306,21 +306,6 @@ model EsportsMatch {
   @@index([game, league])
 }
 
-/// Historie ranku hráče. Riot ji nenabízí, proto ji sbíráme sami při zobrazení profilu.
-model RankSnapshot {
-  id        String   @id @default(cuid())
-  puuid     String
-  queue     String   // "solo" | "flex"
-  tier      String
-  division  String
-  lp        Int
-  wins      Int
-  losses    Int
-  createdAt DateTime @default(now())
-
-  @@index([puuid, queue, createdAt])
-}
-
 /// Záznam ranku hráče v čase (pro graf vývoje LP). Plní se při načtení profilu a z bota.
 model RankSnapshot {
   id       String   @id @default(cuid())
