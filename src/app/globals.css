@@ -72,6 +72,44 @@ h1 { letter-spacing: -0.01em; }
     background: linear-gradient(90deg, rgba(139, 92, 246, 0.22), transparent);
   }
 
+
+  /* Horní navigace */
+  .tab {
+    @apply relative flex items-center px-3.5 font-display text-[13px] font-semibold uppercase tracking-wider text-slate-300 transition hover:text-white;
+  }
+  .tab::after {
+    content: "";
+    position: absolute;
+    left: 0.875rem;
+    right: 0.875rem;
+    bottom: 0;
+    height: 2px;
+    background: #8b5cf6;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.2s;
+  }
+  .tab:hover::after, .tab[data-active="true"]::after { transform: scaleX(1); }
+  .tab[data-active="true"] { @apply text-white; }
+  .tab-gold { color: #f2c76b; }
+  .tab-gold::after { background: #f2c76b; }
+  .tab-gold:hover, .tab-gold[data-active="true"] { color: #ffe0a0; }
+
+  .menu-item {
+    @apply block px-4 py-2 text-sm text-slate-300 transition hover:bg-ink-700 hover:text-white;
+  }
+  .menu-item[data-active="true"] { @apply bg-ink-700 text-white; }
+
+  /* Filtry a zlaté doplňky (sekce Esport) */
+  .chip {
+    @apply inline-flex items-center rounded-[3px] border border-ink-600 bg-ink-800 px-3 py-1.5 text-sm text-slate-300 transition hover:text-white;
+  }
+  .chip[aria-current="true"], .chip[aria-current="page"] { @apply border-accent bg-accent/25 text-white; }
+  .chip-gold[aria-current="true"] { border-color: #f2c76b; background: rgba(242, 199, 107, 0.15); color: #ffe0a0; }
+  .badge-gold { background: rgba(242, 199, 107, 0.18); color: #f2c76b; }
+  .btn-gold { background: #f2c76b; color: #0a0814; }
+  .btn-gold:hover { background: #ffe0a0; color: #0a0814; }
+
   /* Číslice jako na scoreboardu */
   .num { @apply font-display font-bold tabular-nums; }
   /* Tenká neonová linka pod nadpisem sekce */
