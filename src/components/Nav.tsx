@@ -2,15 +2,15 @@ import Link from "next/link";
 import { auth, signIn, signOut } from "@/lib/auth";
 import { getT, pick, LOCALES } from "@/lib/i18n";
 import { setLang } from "@/app/actions";
-import NavLinks, { type NavGroup } from "./NavLinks";
+import TopNav, { type NavItem } from "./TopNav";
 
 function Logo() {
   return (
-    <Link href="/" className="flex items-center gap-3" aria-label="Play Haven">
+    <Link href="/" className="flex shrink-0 items-center gap-3" aria-label="Play Haven">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/brand/logo-mark.png" alt="" className="h-10 w-auto" />
+      <img src="/brand/logo-mark.png" alt="" className="h-9 w-auto" />
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/brand/logo-wordmark.png" alt="Play Haven" className="h-3.5 w-auto" />
+      <img src="/brand/logo-wordmark.png" alt="Play Haven" className="hidden h-3 w-auto sm:block" />
     </Link>
   );
 }
@@ -20,45 +20,36 @@ export default async function Nav() {
   const { t, locale } = await getT();
   const user = session?.user;
 
-  const groups: NavGroup[] = [
+  const community: [string, string][] = [
+    ["/players", t("nav_players")],
+    ["/lfg", t("nav_lfg")],
+    ["/customs", t("nav_customs")],
+  ];
+  if (user) community.push(["/friends", t("nav_friends")]);
+
+  const items: NavItem[] = [
+    { type: "link", href: "/", label: "Hub" },
+    { type: "link", href: "/esports", label: "Esport", tone: "gold" },
+    { type: "link", href: "/lookup", label: pick(locale, "Statistiky", "Štatistiky", "Stats") },
+    { type: "menu", label: pick(locale, "Komunita", "Komunita", "Community"), links: community },
     {
-      links: [
-        ["/", "Hub"],
-        ["/lookup", pick(locale, "Statistiky", "Štatistiky", "Stats")],
-      ],
-    },
-    {
-      title: pick(locale, "Komunita", "Komunita", "Community"),
-      links: [
-        ["/players", t("nav_players")],
-        ["/lfg", t("nav_lfg")],
-        ...(user ? ([["/friends", t("nav_friends")]] as [string, string][]) : []),
-      ],
-    },
-    {
-      title: pick(locale, "Soutěže", "Súťaže", "Compete"),
+      type: "menu",
+      label: pick(locale, "Soutěže", "Súťaže", "Compete"),
       links: [
         ["/tournaments", t("nav_tournaments")],
-        ["/customs", t("nav_customs")],
         ["/leaderboards", t("nav_leaderboards")],
-      ],
-    },
-    {
-      title: pick(locale, "Další", "Ďalšie", "More"),
-      links: [
-        ["/games", t("nav_games")],
         ["/vote", t("nav_vote")],
-        ...(user ? ([["/tickets", t("nav_tickets")]] as [string, string][]) : []),
       ],
     },
+    { type: "link", href: "/games", label: t("nav_games") },
   ];
 
   const langs = (
-    <div className="flex gap-1">
+    <div className="hidden gap-0.5 sm:flex">
       {LOCALES.map((l) => (
         <form key={l} action={setLang.bind(null, l)}>
           <button
-            className={`rounded-md px-2 py-1 text-xs font-semibold uppercase ${
+            className={`rounded-sm px-2 py-1 text-xs font-semibold uppercase ${
               l === locale ? "bg-ink-600 text-white" : "text-slate-400 hover:text-white"
             }`}
           >
@@ -69,84 +60,46 @@ export default async function Nav() {
     </div>
   );
 
-  const loginForm = (
-    <form
-      action={async () => {
-        "use server";
-        await signIn("discord", { redirectTo: "/" });
-      }}
-    >
-      <button className="btn w-full">{t("login")}</button>
-    </form>
-  );
-
   const account = user ? (
-    <div className="space-y-2">
-      <Link href={`/players/${user.handle}`} className="flex min-w-0 items-center gap-2">
+    <details className="relative">
+      <summary className="flex cursor-pointer list-none items-center gap-2 [&::-webkit-details-marker]:hidden">
         {user.image ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={user.image} alt="" className="h-9 w-9 shrink-0 rounded-full" />
+          <img src={user.image} alt="" className="h-9 w-9 rounded-sm border border-ink-600" />
         ) : (
-          <span className="h-9 w-9 shrink-0 rounded-full bg-ink-600" />
+          <span className="h-9 w-9 rounded-sm bg-ink-600" />
         )}
-        <span className="truncate text-sm font-medium text-white">{user.name}</span>
-      </Link>
-      <div className="flex items-center justify-between text-xs">
-        <Link href="/account" className="text-slate-400 hover:text-white">
-          {pick(locale, "Propojené účty", "Prepojené účty", "Linked accounts")}
-        </Link>
+        <span className="hidden max-w-32 truncate text-sm font-semibold text-white md:block">{user.name}</span>
+      </summary>
+      <div className="card absolute right-0 top-full z-50 mt-2 w-56 py-1 shadow-2xl">
+        <Link href={`/players/${user.handle}`} className="menu-item">{t("nav_profile")}</Link>
+        <Link href="/account" className="menu-item">{pick(locale, "Propojené účty", "Prepojené účty", "Linked accounts")}</Link>
+        <Link href="/tickets" className="menu-item">{t("nav_tickets")}</Link>
         <form
           action={async () => {
             "use server";
             await signOut({ redirectTo: "/" });
           }}
         >
-          <button className="text-slate-400 hover:text-white">{t("logout")}</button>
+          <button className="menu-item w-full text-left">{t("logout")}</button>
         </form>
       </div>
-    </div>
+    </details>
   ) : (
-    loginForm
+    <form
+      action={async () => {
+        "use server";
+        await signIn("discord", { redirectTo: "/" });
+      }}
+    >
+      <button className="btn">{t("login")}</button>
+    </form>
   );
 
   return (
-    <aside className="border-b border-ink-600/50 bg-ink-900 lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-r">
-      {/* Mobil: horní lišta */}
-      <div className="lg:hidden">
-        <div className="flex items-center justify-between gap-3 px-4 py-3">
-          <Logo />
-          <div className="flex items-center gap-3">
-            {langs}
-            {user ? (
-              <Link href={`/players/${user.handle}`} aria-label={t("nav_profile")}>
-                {user.image ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={user.image} alt="" className="h-8 w-8 rounded-full" />
-                ) : (
-                  <span className="block h-8 w-8 rounded-full bg-ink-600" />
-                )}
-              </Link>
-            ) : (
-              loginForm
-            )}
-          </div>
-        </div>
-        <NavLinks groups={groups} orientation="horizontal" />
-      </div>
-
-      {/* Desktop: boční panel */}
-      <div className="hidden h-full flex-col gap-7 p-4 lg:flex">
-        <div className="px-2 pt-2">
-          <Logo />
-        </div>
-        <div className="flex-1 overflow-y-auto">
-          <NavLinks groups={groups} orientation="vertical" />
-        </div>
-        <div className="space-y-3 border-t border-ink-600/50 pt-4">
-          {langs}
-          {account}
-        </div>
-      </div>
-    </aside>
+    <TopNav items={items} logo={<Logo />}>
+      {langs}
+      {account}
+    </TopNav>
   );
 }
