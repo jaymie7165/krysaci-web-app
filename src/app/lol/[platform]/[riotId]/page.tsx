@@ -2,7 +2,7 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { getT, pick } from "@/lib/i18n";
-import { PLATFORMS, RiotError, findAccount, getLolProfile, parseRiotId } from "@/lib/riot";
+import { PLATFORMS, RiotError, findAccount, getLiveGame, getLolProfile, getRankHistory, parseRiotId } from "@/lib/riot";
 import LolProfileView from "@/components/LolProfileView";
 import LolSearch from "@/components/LolSearch";
 
@@ -12,8 +12,16 @@ function safeDecode(s: string) {
   try { return decodeURIComponent(s); } catch { return s; }
 }
 
-export default async function LolPage({ params }: { params: Promise<{ platform: string; riotId: string }> }) {
+export default async function LolPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ platform: string; riotId: string }>;
+  searchParams: Promise<{ games?: string }>;
+}) {
   const { platform, riotId } = await params;
+  const { games } = await searchParams;
+  const count = games === "50" ? 50 : 20;
   const { locale } = await getT();
   const session = await auth();
   const id = parseRiotId(safeDecode(riotId));
@@ -38,7 +46,7 @@ export default async function LolPage({ params }: { params: Promise<{ platform: 
   let profile;
   try {
     const acc = await findAccount(id.gameName, id.tagLine, platform);
-    profile = await getLolProfile(acc.puuid, acc.gameName, acc.tagLine, platform);
+    profile = await getLolProfile(acc.puuid, acc.gameName, acc.tagLine, platform, count);
   } catch (e) {
     const status = e instanceof RiotError ? e.status : 0;
     if (status === 404)
@@ -53,6 +61,11 @@ export default async function LolPage({ params }: { params: Promise<{ platform: 
     return fail(pick(locale, "Načtení se nepovedlo", "Načítanie sa nepodarilo", "Couldn't load stats"),
       pick(locale, "Zkus to prosím za chvíli znovu.", "Skús to prosím o chvíľu znova.", "Please try again shortly."));
   }
+
+  const [history, live] = await Promise.all([
+    getRankHistory(profile.puuid),
+    getLiveGame(profile.puuid, platform).catch(() => null),
+  ]);
 
   const linked = await db.linkedAccount.findFirst({
     where: { provider: "riot", externalId: profile.puuid, verified: true },
@@ -72,7 +85,14 @@ export default async function LolPage({ params }: { params: Promise<{ platform: 
   return (
     <div className="space-y-6">
       <LolSearch locale={locale} size="md" />
-      <LolProfileView p={profile} locale={locale} actions={actions} />
+      <LolProfileView
+        p={profile}
+        locale={locale}
+        actions={actions}
+        history={history}
+        live={live}
+        gamesParam={`/lol/${platform}/${encodeURIComponent(profile.gameName)}-${encodeURIComponent(profile.tagLine)}`}
+      />
     </div>
   );
 }

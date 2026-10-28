@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { getT, dateFmt, type Key } from "@/lib/i18n";
-import { createTournament, joinTournament, leaveTournament } from "@/app/actions";
+import { createTournament, deleteTournament, joinTournament, leaveTournament } from "@/app/actions";
 import GameSelect from "@/components/GameSelect";
 
 export const metadata = { title: "Turnaje" };
@@ -9,7 +9,7 @@ export const metadata = { title: "Turnaje" };
 export default async function TournamentsPage() {
   const { t, locale } = await getT();
   const session = await auth();
-  const canCreate = !!session?.user && session.user.role !== "USER";
+  const canCreate = session?.user?.role === "ADMIN";
   const [items, games] = await Promise.all([
     db.tournament.findMany({
       orderBy: { startsAt: "asc" },
@@ -58,7 +58,14 @@ export default async function TournamentsPage() {
                 </div>
               </div>
               <div className="flex items-center justify-between border-t border-ink-600/60 px-5 py-3">
-                <span className="text-sm text-slate-400">{x.entries.length}/{x.maxPlayers} {t("players_short")}</span>
+                <span className="flex items-center gap-3 text-sm text-slate-400">
+                  {x.entries.length}/{x.maxPlayers} {t("players_short")}
+                  {canCreate && (
+                    <form action={deleteTournament.bind(null, x.id)}>
+                      <button className="text-xs text-slate-500 hover:text-ember">Smazat</button>
+                    </form>
+                  )}
+                </span>
                 {x.status === "UPCOMING" &&
                   (session?.user ? (
                     joined ? (
