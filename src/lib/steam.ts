@@ -90,3 +90,18 @@ async function loadSummary(steamId: string): Promise<SteamSummary> {
 export function getSteamSummary(steamId: string) {
   return cached(`steam:${steamId}`, 900, () => loadSummary(steamId));
 }
+
+/** Co právě hrají zadaní hráči na Steamu (jeden dotaz pro celou skupinu, cache 1 minuta). */
+export async function getSteamNowPlaying(steamIds: string[]): Promise<Record<string, string>> {
+  const key = process.env.STEAM_API_KEY;
+  if (!key || steamIds.length === 0) return {};
+  const ids = [...new Set(steamIds)].slice(0, 100).sort();
+  return cached(`steam:now:${ids.join(",")}`, 60, async () => {
+    const r = await (
+      await fetch(`https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?key=${key}&steamids=${ids.join(",")}`)
+    ).json();
+    const out: Record<string, string> = {};
+    for (const p of r?.response?.players ?? []) if (p.gameextrainfo) out[p.steamid] = p.gameextrainfo;
+    return out;
+  });
+}
