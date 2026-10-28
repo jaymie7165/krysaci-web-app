@@ -43,6 +43,7 @@ model User {
   role        Role     @default(USER)
   createdAt   DateTime @default(now())
   lastSeenAt  DateTime @default(now())
+  showActivity Boolean @default(true) // zda web ukazuje, jakou hru hráč právě hraje
 
   gameProfiles   GameProfile[]
   stats          PlayerStat[]
@@ -279,4 +280,58 @@ model StatCache {
   key       String   @id
   data      Json
   fetchedAt DateTime @default(now())
+}
+
+/// Esportový zápas (LEC, Worlds, VCT…). Zadává admin ručně, případně se doplňuje synchronizací.
+model EsportsMatch {
+  id         String   @id @default(cuid())
+  game       String   // "lol" | "valorant"
+  league     String   // např. "LEC", "Worlds"
+  stage      String?  // např. "Playoffs", "Swiss, kolo 3"
+  startsAt   DateTime
+  bestOf     Int      @default(1)
+  teamA      String
+  teamB      String
+  logoA      String?
+  logoB      String?
+  scoreA     Int?
+  scoreB     Int?
+  status     String   @default("upcoming") // upcoming | live | finished
+  streamUrl  String?
+  source     String   @default("manual")   // manual | sync
+  externalId String?  @unique
+  createdAt  DateTime @default(now())
+
+  @@index([startsAt])
+  @@index([game, league])
+}
+
+/// Historie ranku hráče. Riot ji nenabízí, proto ji sbíráme sami při zobrazení profilu.
+model RankSnapshot {
+  id        String   @id @default(cuid())
+  puuid     String
+  queue     String   // "solo" | "flex"
+  tier      String
+  division  String
+  lp        Int
+  wins      Int
+  losses    Int
+  createdAt DateTime @default(now())
+
+  @@index([puuid, queue, createdAt])
+}
+
+/// Záznam ranku hráče v čase (pro graf vývoje LP). Plní se při načtení profilu a z bota.
+model RankSnapshot {
+  id       String   @id @default(cuid())
+  puuid    String
+  queue    String   // RANKED_SOLO_5x5 | RANKED_FLEX_SR
+  tier     String
+  division String
+  lp       Int
+  wins     Int
+  losses   Int
+  takenAt  DateTime @default(now())
+
+  @@index([puuid, queue, takenAt])
 }
