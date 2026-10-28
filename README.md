@@ -80,6 +80,33 @@ Hráč, který na webu ještě není, dostane „stínový“ profil, který se 
 **Jednorázový import dat bota**: `DATABASE_URL=... npm run import:bot cesta/k/data.json`
 (formát je v hlavičce `scripts/import-bot-json.mjs`, upravíme podle skutečného JSONu bota).
 
+## Živá komunita a vývoj ranku (bot)
+
+Hub ukazuje, kdo je právě v jaké hře. Zdroje: Steam (aktuální hra), živá hra v LoL (jen ověřené Riot účty) a Discord aktivita z tvého bota. Hráč si to na stránce Propojené účty může vypnout (soukromí).
+
+**Discord aktivita** – bot zhruba každých 60 s pošle, co kdo hraje (v Discord Developer Portalu zapni intent *Presence*):
+
+```js
+setInterval(async () => {
+  const guild = client.guilds.cache.first();
+  const players = guild.members.cache
+    .filter((m) => !m.user.bot)
+    .map((m) => ({
+      discordId: m.id,
+      game: m.presence?.activities.find((a) => a.type === 0)?.name ?? null,
+    }));
+  await fetch(`${process.env.WEB_URL}/api/bot/presence`, {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-bot-key": process.env.BOT_API_KEY },
+    body: JSON.stringify({ players }),
+  }).catch(() => {});
+}, 60_000);
+```
+
+**Graf ranku** – bot jednou za 6 až 12 hodin zavolá `POST /api/bot/snapshots` (stejná hlavička `x-bot-key`, bez těla). Web uloží aktuální rank ověřených hráčů a z toho kreslí graf LP. Bez toho se body ukládají jen při otevření profilu.
+
+Poznámka: databáze webu přibyly sloupce a tabulky (`showActivity`, `verifyIcon`, `RankSnapshot`, `StatCache`). Přidá je `prisma db push` při startu, vždy do databáze webu, ne do databáze bota.
+
 ## Struktura
 
 ```

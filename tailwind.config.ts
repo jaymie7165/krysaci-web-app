@@ -1,23 +1,21 @@
 import type { Config } from "tailwindcss";
 
-// Play Haven – noční fialová (základ), fialový akcent, mint pro výhry a progres.
+// Play Haven – herní launcher: noční fialová (platforma) + zlatá (esport, Worlds).
 const config: Config = {
   content: ["./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
       colors: {
-        ink: { 950: "#0a0814", 900: "#110d22", 800: "#18122f", 700: "#231b44", 600: "#332a5e" },
-        accent: { DEFAULT: "#8b5cf6", soft: "#b79cff" },
-        pulse: "#5fd6a4",
+        ink: { 950: "#07050f", 900: "#0d0819", 800: "#130d26", 700: "#1c1338", 600: "#2a1f4d" },
+        accent: { DEFAULT: "#8b5cf6", soft: "#c4a1ff" },
+        gold: { DEFAULT: "#e3b866", deep: "#b8893a" },
+        pulse: "#4fe3a8",
         ember: "#ff6b81",
-        bone: "#ece9f8",
+        bone: "#ece9f6",
       },
       fontFamily: {
-        display: ["Bricolage Grotesque", "system-ui", "sans-serif"],
+        display: ["Chakra Petch", "system-ui", "sans-serif"],
         sans: ["Figtree", "system-ui", "sans-serif"],
-      },
-      boxShadow: {
-        glow: "0 0 0 1px rgba(139,92,246,0.55), 0 12px 32px -12px rgba(139,92,246,0.45)",
       },
     },
   },
