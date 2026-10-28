@@ -66,23 +66,28 @@ async function fetchValorant(): Promise<Row[]> {
   return rows;
 }
 
-const DEFAULT_LOL_LEAGUES = [
-  "98767991302996019", // LEC
-  "98767975604431411", // Worlds
-  "98767991325878492", // MSI
-];
+// Veřejný sdílený klíč, který používá web lolesports.com. Jde přepsat proměnnou LOLESPORTS_API_KEY.
+const PUBLIC_LOL_KEY = "0TvQnueqKa5mxJntVWt0w4LpLfEkrV1Ta8rQBb9Z";
+const LOL_BASE = "https://esports-api.lolesports.com/persisted/gw";
+// Ligy se hledají podle zkratky, takže nezávisí na pevných ID. Přepiš LOLESPORTS_LEAGUES (např. "lec,worlds,msi,lck").
+const DEFAULT_LOL_SLUGS = ["lec", "worlds", "msi"];
 
 async function fetchLol(): Promise<Row[]> {
-  const key = process.env.LOLESPORTS_API_KEY;
-  if (!key) return [];
-  const ids = (process.env.LOLESPORTS_LEAGUE_IDS?.split(",").map((s) => s.trim()).filter(Boolean)) ?? DEFAULT_LOL_LEAGUES;
+  const key = process.env.LOLESPORTS_API_KEY || PUBLIC_LOL_KEY;
+  const headers = { "x-api-key": key };
+  let ids = process.env.LOLESPORTS_LEAGUE_IDS?.split(",").map((s) => s.trim()).filter(Boolean) ?? [];
+  if (ids.length === 0) {
+    const slugs = (process.env.LOLESPORTS_LEAGUES?.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean)) ?? DEFAULT_LOL_SLUGS;
+    const lr = await fetch(`${LOL_BASE}/getLeagues?hl=en-US`, { headers, cache: "no-store" });
+    if (!lr.ok) throw new Error(`lolesports getLeagues ${lr.status}`);
+    const leagues: { id: string; slug: string }[] = (await lr.json())?.data?.leagues ?? [];
+    ids = leagues.filter((l) => slugs.includes(l.slug.toLowerCase())).map((l) => l.id);
+    if (ids.length === 0) throw new Error("lolesports: žádná z lig nenalezena");
+  }
   const rows: Row[] = [];
   for (const id of ids) {
-    const res = await fetch(`https://esports-api.lolesports.com/persisted/gw/getSchedule?hl=en-US&leagueId=${id}`, {
-      headers: { "x-api-key": key },
-      cache: "no-store",
-    });
-    if (!res.ok) continue;
+    const res = await fetch(`${LOL_BASE}/getSchedule?hl=en-US&leagueId=${id}`, { headers, cache: "no-store" });
+    if (!res.ok) throw new Error(`lolesports getSchedule ${res.status}`);
     const j = await res.json();
     for (const e of j?.data?.schedule?.events ?? []) {
       const teams: RawTeam[] = e?.match?.teams ?? [];
@@ -135,11 +140,11 @@ export async function syncEsports(): Promise<{ saved: number; errors: string[] }
   return { saved, errors };
 }
 
-/** Synchronizace nejvýše jednou za 30 minut, spouští se při otevření stránky Esport. */
+/** Synchronizace nejvýše jednou za 5 minut, spouští se při otevření stránky Esport. */
 export async function maybeSyncEsports() {
   try {
     await Promise.race([
-      cached("esports:lastsync", 30 * 60, async () => {
+      cached("esports:lastsync", 5 * 60, async () => {
         const r = await syncEsports();
         return { at: Date.now(), ...r };
       }),
