@@ -7,6 +7,7 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { LOCALES } from "@/lib/i18n";
+import { pragueToDate } from "@/lib/time";
 
 async function user() {
   const s = await auth();
@@ -100,13 +101,13 @@ export async function closeLfg(postId: string) {
 /* ---------- Turnaje ---------- */
 export async function createTournament(fd: FormData) {
   const u = await user();
-  if (u.role === "USER") return;
+  if (u.role !== "ADMIN") return; // turnaje zakládá jen admin
   const parsed = z
     .object({
       gameId: z.string().min(1),
       name: z.string().min(3).max(80),
       description: z.string().min(3).max(1000),
-      startsAt: z.coerce.date(),
+      startsAt: z.string().transform(pragueToDate).refine((d) => !isNaN(d.getTime())),
       maxPlayers: z.coerce.number().int().min(2).max(256),
       prize: z.string().max(100).optional(),
     })
@@ -149,7 +150,7 @@ export async function createCustom(fd: FormData) {
       gameId: z.string().min(1),
       title: z.string().min(3).max(80),
       description: z.string().max(500).optional(),
-      startsAt: z.coerce.date(),
+      startsAt: z.string().transform(pragueToDate).refine((d) => !isNaN(d.getTime())),
       maxPlayers: z.coerce.number().int().min(2).max(100),
     })
     .safeParse({
@@ -261,6 +262,7 @@ export async function closeTicket(ticketId: string) {
 /* ---------- Hlasování o hrách ---------- */
 export async function suggestGame(fd: FormData) {
   const u = await user();
+  if (u.role !== "ADMIN") return; // hlasování zakládá jen admin, hráči v něm hlasují
   const parsed = z
     .object({
       name: z.string().min(2).max(60),
@@ -288,5 +290,20 @@ export async function toggleVote(suggestionId: string) {
   });
   if (existing) await db.gameVote.delete({ where: { id: existing.id } });
   else await db.gameVote.create({ data: { suggestionId, userId: u.id } });
+  revalidatePath("/vote");
+}
+
+/* ---------- Správa (jen admin) ---------- */
+export async function deleteTournament(id: string) {
+  const u = await user();
+  if (u.role !== "ADMIN") return;
+  await db.tournament.delete({ where: { id } }).catch(() => null);
+  revalidatePath("/tournaments");
+}
+
+export async function deleteSuggestion(id: string) {
+  const u = await user();
+  if (u.role !== "ADMIN") return;
+  await db.gameSuggestion.delete({ where: { id } }).catch(() => null);
   revalidatePath("/vote");
 }

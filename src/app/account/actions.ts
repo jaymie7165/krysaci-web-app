@@ -146,3 +146,11 @@ export async function setValorantShare(fd: FormData) {
   revalidatePath("/account");
   redirect("/account?ok=valorant");
 }
+
+/** Hráč si sám určí, jestli web ukazuje, co právě hraje. */
+export async function setShowActivity(fd: FormData) {
+  const u = await me();
+  await db.user.update({ where: { id: u.id }, data: { showActivity: fd.get("showActivity") === "on" } });
+  revalidatePath("/account");
+  redirect("/account?ok=valorant");
+}

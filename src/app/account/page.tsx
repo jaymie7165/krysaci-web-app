@@ -3,7 +3,7 @@ import { auth, signIn } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getT, pick } from "@/lib/i18n";
 import { DEFAULT_PLATFORM, PLATFORMS, profileIconUrl } from "@/lib/riot";
-import { checkRiotVerify, linkRiot, setValorantShare, startRiotVerify, unlinkAccount } from "./actions";
+import { checkRiotVerify, linkRiot, setShowActivity, setValorantShare, startRiotVerify, unlinkAccount } from "./actions";
 
 export const metadata = { title: "Propojené účty" };
 
@@ -34,6 +34,7 @@ export default async function AccountPage({
   }
 
   const accounts = await db.linkedAccount.findMany({ where: { userId: session.user.id } });
+  const me = await db.user.findUnique({ where: { id: session.user.id }, select: { showActivity: true } });
   const steam = accounts.find((a) => a.provider === "steam");
   const riot = accounts.find((a) => a.provider === "riot");
 
@@ -78,6 +79,25 @@ export default async function AccountPage({
       {ok && oks[ok] && (
         <p role="status" className="rounded-xl border border-pulse/40 bg-pulse/10 p-3 text-sm text-pulse">{oks[ok]}</p>
       )}
+
+      {/* Soukromí */}
+      <section className="card space-y-3 p-5">
+        <h2 className="text-lg font-semibold">{pick(locale, "Soukromí", "Súkromie", "Privacy")}</h2>
+        <form action={setShowActivity} className="flex flex-wrap items-center gap-3">
+          <label className="flex flex-1 items-start gap-3 text-sm text-slate-300">
+            <input type="checkbox" name="showActivity" defaultChecked={me?.showActivity ?? true} className="mt-1 h-4 w-4 accent-violet-500" />
+            <span>
+              {pick(
+                locale,
+                "Ukazovat ostatním přihlášeným hráčům, jakou hru právě hraju",
+                "Ukazovať ostatným prihláseným hráčom, akú hru práve hrám",
+                "Show other signed-in players which game I'm playing right now"
+              )}
+            </span>
+          </label>
+          <button className="btn-ghost">{t("save")}</button>
+        </form>
+      </section>
 
       {/* Discord */}
       <section className="card flex items-center gap-4 p-5">
