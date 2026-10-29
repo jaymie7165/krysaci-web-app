@@ -48,7 +48,7 @@ export type SteamSummary = {
   avatar: string;
   profileUrl: string;
   isPublic: boolean;
-  recent: { appId: number; name: string; hours2w: number; hoursTotal: number }[];
+  recent: { appId: number; name: string; hours2w: number; hoursTotal: number; icon?: string }[];
 };
 
 async function loadSummary(steamId: string): Promise<SteamSummary> {
@@ -68,7 +68,8 @@ async function loadSummary(steamId: string): Promise<SteamSummary> {
       .then((x) => x.json())
       .catch(() => null);
     recent = (r?.response?.games ?? []).map(
-      (g: { appid: number; name: string; playtime_2weeks?: number; playtime_forever?: number }) => ({
+      (g: { appid: number; name: string; img_icon_url?: string; playtime_2weeks?: number; playtime_forever?: number }) => ({
+        icon: g.img_icon_url || undefined,
         appId: g.appid,
         name: g.name,
         hours2w: Math.round(((g.playtime_2weeks ?? 0) / 60) * 10) / 10,

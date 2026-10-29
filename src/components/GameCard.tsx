@@ -4,7 +4,7 @@ import GameImage from "./GameImage";
 type G = { slug: string; name: string; imageUrl: string; category: string; description?: string };
 
 export default function GameCard({ game, href, compact }: { game: G; href?: string; compact?: boolean }) {
-  const target = href ?? `/leaderboards?game=${game.slug}`;
+  const target = href ?? `/games/${game.slug}`;
 
   if (compact) {
     return (

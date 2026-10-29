@@ -37,6 +37,7 @@ export default async function Nav() {
       label: pick(locale, "Soutěže", "Súťaže", "Compete"),
       links: [
         ["/tournaments", t("nav_tournaments")],
+        ["/pickems", "Pickems"],
         ["/leaderboards", t("nav_leaderboards")],
         ["/vote", t("nav_vote")],
       ],

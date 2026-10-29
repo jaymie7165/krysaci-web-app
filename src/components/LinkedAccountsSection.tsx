@@ -5,6 +5,7 @@ import { getLolProfile, PLATFORMS, DEFAULT_PLATFORM } from "@/lib/riot";
 import { getSteamSummary } from "@/lib/steam";
 import { getValorantRank } from "@/lib/valorant";
 import LolProfileView from "./LolProfileView";
+import SteamGameImg from "./SteamGameImg";
 import RankTag from "./RankTag";
 
 /** Propojené účty hráče (Steam, LoL, Valorant) na jeho profilu. Chyby externích služeb sekci nerozbijí. */
@@ -62,12 +63,7 @@ export default async function LinkedAccountsSection({ userId, locale, isMe }: { 
               <ul className="space-y-1.5 text-sm">
                 {steamData.recent.map((g) => (
                   <li key={g.appId} className="flex items-center gap-3">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={`https://cdn.cloudflare.steamstatic.com/steam/apps/${g.appId}/capsule_184x69.jpg`}
-                      alt=""
-                      className="h-7 w-[74px] rounded object-cover"
-                    />
+                    <SteamGameImg appId={g.appId} name={g.name} icon={g.icon} />
                     <span className="min-w-0 flex-1 truncate text-bone">{g.name}</span>
                     <span className="text-xs text-slate-400">{g.hours2w} h / 2 {pick(locale, "týdny", "týždne", "wks")}</span>
                   </li>
