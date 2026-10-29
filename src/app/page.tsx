@@ -301,7 +301,7 @@ export default async function Home() {
                 return (
                   <Link
                     key={g.id}
-                    href={`/leaderboards?game=${g.slug}`}
+                    href={`/games/${g.slug}`}
                     className="group relative block aspect-[4/3] overflow-hidden rounded-[3px] border border-ink-600/70 bg-ink-900 transition hover:border-accent"
                   >
                     <GameImage src={g.imageUrl} name={g.name} className="h-full w-full transition duration-500 group-hover:scale-105" />

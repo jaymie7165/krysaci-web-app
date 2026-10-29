@@ -1,10 +1,23 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
-import { getT, dateFmt } from "@/lib/i18n";
+import { getT, dateFmt, pick } from "@/lib/i18n";
 import { sendFriendRequest, updateProfile, saveGameProfile } from "@/app/actions";
 import GameSelect from "@/components/GameSelect";
 import LinkedAccountsSection from "@/components/LinkedAccountsSection";
+import ShareCard from "@/components/ShareCard";
+
+export async function generateMetadata({ params }: { params: Promise<{ handle: string }> }): Promise<Metadata> {
+  const { handle } = await params;
+  const p = await db.user.findUnique({ where: { handle }, select: { username: true, bio: true } }).catch(() => null);
+  if (!p) return { title: "Hráč" };
+  return {
+    title: p.username,
+    description: p.bio || `Vizitka hráče ${p.username} na Play Haven.`,
+    openGraph: { title: `${p.username} na Play Haven`, description: p.bio || "Vizitka hráče, statistiky a propojené herní účty." },
+  };
+}
 
 export default async function PlayerPage({ params }: { params: Promise<{ handle: string }> }) {
   const { handle } = await params;
@@ -58,6 +71,18 @@ export default async function PlayerPage({ params }: { params: Promise<{ handle:
             </form>
           )}
           {friendship?.status === "PENDING" && <span className="badge">{t("pending")}</span>}
+          {friendship?.status === "ACCEPTED" && <span className="badge">{pick(locale, "Přátelé", "Priatelia", "Friends")}</span>}
+        </div>
+        <div className="border-t border-ink-600/60 px-6 py-3">
+          <ShareCard
+            handle={player.handle}
+            labels={{
+              copy: pick(locale, "Kopírovat odkaz na vizitku", "Kopírovať odkaz na vizitku", "Copy card link"),
+              copied: pick(locale, "Zkopírováno", "Skopírované", "Copied"),
+              share: pick(locale, "Sdílet", "Zdieľať", "Share"),
+              image: pick(locale, "Obrázek vizitky", "Obrázok vizitky", "Card image"),
+            }}
+          />
         </div>
       </section>
 

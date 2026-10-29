@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { getT, pick, type Locale } from "@/lib/i18n";
 import { maybeSyncEsports } from "@/lib/esports";
+import { settlePicks } from "@/lib/pickems";
 import TeamMark from "@/components/TeamMark";
 import { createEsportsMatch, deleteEsportsMatch, runEsportsSync, updateEsportsMatch } from "./actions";
 
@@ -30,6 +31,7 @@ export default async function EsportsPage({
   const results = sp.view === "results";
 
   await maybeSyncEsports();
+  await settlePicks();
 
   const matches: Match[] = await db.esportsMatch.findMany({
     where: { ...(game ? { game } : {}), status: results ? "finished" : { in: ["upcoming", "live"] } },
@@ -117,6 +119,7 @@ export default async function EsportsPage({
           <Link href={q({ view: "results" })} aria-current={results} className="chip chip-gold">
             {pick(locale, "Výsledky", "Výsledky", "Results")}
           </Link>
+          <Link href="/pickems" className="chip chip-gold">Pickems</Link>
         </div>
       </div>
 

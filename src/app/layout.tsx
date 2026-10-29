@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Nav from "@/components/Nav";
+import AutoRefresh from "@/components/AutoRefresh";
 import { getT } from "@/lib/i18n";
 
 // Stránky čtou data z databáze, nechceme je předgenerovat při buildu.
@@ -25,6 +26,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body>
         <Nav />
+        <AutoRefresh />
         <main className="mx-auto min-h-[75vh] max-w-7xl px-4 py-8 lg:px-8 lg:py-10">{children}</main>
         <footer className="border-t border-ink-600/50">
           <div className="mx-auto max-w-7xl space-y-2 px-4 py-8 text-xs leading-relaxed text-slate-500 lg:px-8">

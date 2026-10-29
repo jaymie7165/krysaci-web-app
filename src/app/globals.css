@@ -110,6 +110,19 @@ h1 { letter-spacing: -0.01em; }
   .btn-gold { background: #f2c76b; color: #0a0814; }
   .btn-gold:hover { background: #ffe0a0; color: #0a0814; }
 
+
+  /* Úvodní panel stránky (Esport, Pickems) */
+  .stage {
+    position: relative;
+    background: linear-gradient(135deg, #2a1f55 0%, #18122f 55%, #130e26 100%);
+    box-shadow: inset 0 0 0 1px rgba(139, 92, 246, 0.35);
+    clip-path: polygon(0 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, var(--cut) 100%, 0 calc(100% - var(--cut)));
+  }
+  .stage-gold {
+    background: linear-gradient(135deg, #3a2c3f 0%, #1d1530 55%, #130e26 100%);
+    box-shadow: inset 0 0 0 1px rgba(227, 184, 102, 0.4);
+  }
+
   /* Číslice jako na scoreboardu */
   .num { @apply font-display font-bold tabular-nums; }
   /* Tenká neonová linka pod nadpisem sekce */

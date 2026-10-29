@@ -17,6 +17,21 @@ async function user() {
 
 const str = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim();
 
+/** Vrátí zpět na stránku se zprávou, kterou stránka zobrazí nad obsahem. */
+function back(path: string, msg: string): never {
+  redirect(`${path}?msg=${msg}`);
+}
+
+/** Najde hráče podle @handle nebo jména (bez @, bez rozlišení velikosti písmen). */
+async function findPlayer(input: string) {
+  const q = input.trim().replace(/^@/, "");
+  if (!q) return null;
+  return (
+    (await db.user.findFirst({ where: { handle: { equals: q, mode: "insensitive" } } })) ??
+    (await db.user.findFirst({ where: { username: { equals: q, mode: "insensitive" } } }))
+  );
+}
+
 /* ---------- Jazyk ---------- */
 export async function setLang(lang: string) {
   if (!(LOCALES as readonly string[]).includes(lang)) return;
@@ -51,6 +66,37 @@ export async function saveGameProfile(fd: FormData) {
     create: { userId: u.id, gameId, inGameName, rank },
   });
   revalidatePath(`/players/${u.handle}`);
+}
+
+/** Přidání hráče do hry. Každý přidává sám sebe, admin může přidat kohokoliv podle @handlu. */
+export async function joinGame(gameId: string, fd: FormData) {
+  const u = await user();
+  const game = await db.game.findUnique({ where: { id: gameId } });
+  if (!game) return;
+  const inGameName = str(fd, "inGameName").slice(0, 40);
+  const rank = str(fd, "rank").slice(0, 30) || null;
+  if (!inGameName) return;
+  let target = u;
+  const handle = str(fd, "handle");
+  if (handle && u.role === "ADMIN") {
+    const p = await findPlayer(handle);
+    if (!p) back(`/games/${game.slug}`, "notfound");
+    target = p as typeof u;
+  }
+  await db.gameProfile.upsert({
+    where: { userId_gameId: { userId: target.id, gameId } },
+    update: { inGameName, rank },
+    create: { userId: target.id, gameId, inGameName, rank },
+  });
+  revalidatePath(`/games/${game.slug}`);
+  back(`/games/${game.slug}`, "added");
+}
+
+export async function leaveGame(gameId: string) {
+  const u = await user();
+  const game = await db.game.findUnique({ where: { id: gameId } });
+  await db.gameProfile.deleteMany({ where: { userId: u.id, gameId } });
+  if (game) revalidatePath(`/games/${game.slug}`);
 }
 
 /* ---------- LFG ---------- */
@@ -98,6 +144,31 @@ export async function closeLfg(postId: string) {
   revalidatePath("/lfg");
 }
 
+/** Autor LFG přidá do party hráče podle @handlu. */
+export async function addToLfg(postId: string, fd: FormData) {
+  const u = await user();
+  const post = await db.lfgPost.findUnique({ where: { id: postId }, include: { _count: { select: { joins: true } } } });
+  if (!post || (post.authorId !== u.id && u.role !== "ADMIN") || !post.open) return;
+  const p = await findPlayer(str(fd, "handle"));
+  if (!p) back("/lfg", "notfound");
+  if (p.id === post.authorId) return;
+  if (post._count.joins + 1 >= post.slots) back("/lfg", "full");
+  await db.lfgJoin.upsert({
+    where: { postId_userId: { postId, userId: p.id } },
+    update: {},
+    create: { postId, userId: p.id },
+  });
+  revalidatePath("/lfg");
+  back("/lfg", "added");
+}
+
+/** Hráč se může z LFG odhlásit. */
+export async function leaveLfg(postId: string) {
+  const u = await user();
+  await db.lfgJoin.deleteMany({ where: { postId, userId: u.id } });
+  revalidatePath("/lfg");
+}
+
 /* ---------- Turnaje ---------- */
 export async function createTournament(fd: FormData) {
   const u = await user();
@@ -109,6 +180,7 @@ export async function createTournament(fd: FormData) {
       description: z.string().min(3).max(1000),
       startsAt: z.string().transform(pragueToDate).refine((d) => !isNaN(d.getTime())),
       maxPlayers: z.coerce.number().int().min(2).max(256),
+      teamSize: z.coerce.number().int().min(1).max(10),
       prize: z.string().max(100).optional(),
     })
     .safeParse({
@@ -117,6 +189,7 @@ export async function createTournament(fd: FormData) {
       description: str(fd, "description"),
       startsAt: str(fd, "startsAt"),
       maxPlayers: str(fd, "maxPlayers") || "16",
+      teamSize: str(fd, "teamSize") || "1",
       prize: str(fd, "prize"),
     });
   if (!parsed.success) return;
@@ -136,9 +209,110 @@ export async function joinTournament(id: string) {
   revalidatePath("/tournaments");
 }
 
+/** Přihlásí celý tým najednou. Kapitán zadá název a @handly spoluhráčů. */
+export async function createTeam(tournamentId: string, fd: FormData) {
+  const u = await user();
+  const t = await db.tournament.findUnique({ where: { id: tournamentId }, include: { entries: true } });
+  if (!t || t.status !== "UPCOMING") back("/tournaments", "closed");
+  if (t.teamSize < 2) back("/tournaments", "solo");
+  const name = str(fd, "teamName").slice(0, 40);
+  if (name.length < 2) back("/tournaments", "teamname");
+  if (await db.tournamentTeam.findFirst({ where: { tournamentId, name: { equals: name, mode: "insensitive" } } })) back("/tournaments", "teamtaken");
+
+  const mine = t.entries.find((e) => e.userId === u.id);
+  if (mine?.teamId) back("/tournaments", "inteam");
+
+  const handles = str(fd, "members").split(/[\s,;]+/).filter(Boolean).slice(0, t.teamSize - 1);
+  const members: NonNullable<Awaited<ReturnType<typeof findPlayer>>>[] = [];
+  for (const h of handles) {
+    const p = await findPlayer(h);
+    if (!p) back("/tournaments", "notfound");
+    if (p.id === u.id || members.some((m) => m.id === p.id)) continue;
+    if (t.entries.find((e) => e.userId === p.id)?.teamId) back("/tournaments", "memberbusy");
+    members.push(p);
+  }
+
+  const already = new Set(t.entries.map((e) => e.userId));
+  const added = [u.id, ...members.map((m) => m.id)].filter((x) => !already.has(x)).length;
+  if (t.entries.length + added > t.maxPlayers) back("/tournaments", "full");
+
+  const team = await db.tournamentTeam.create({ data: { tournamentId, name, captainId: u.id } });
+  for (const uid of [u.id, ...members.map((m) => m.id)]) {
+    await db.tournamentEntry.upsert({
+      where: { tournamentId_userId: { tournamentId, userId: uid } },
+      update: { teamId: team.id },
+      create: { tournamentId, userId: uid, teamId: team.id },
+    });
+  }
+  revalidatePath("/tournaments");
+  back("/tournaments", "teamok");
+}
+
+/** Hráč se přidá do existujícího týmu, pokud je v něm volné místo. */
+export async function joinTeam(teamId: string) {
+  const u = await user();
+  const team = await db.tournamentTeam.findUnique({
+    where: { id: teamId },
+    include: { tournament: { include: { entries: true } }, entries: true },
+  });
+  if (!team || team.tournament.status !== "UPCOMING") back("/tournaments", "closed");
+  if (team.entries.length >= team.tournament.teamSize) back("/tournaments", "teamfull");
+  const mine = team.tournament.entries.find((e) => e.userId === u.id);
+  if (mine?.teamId) back("/tournaments", "inteam");
+  if (!mine && team.tournament.entries.length >= team.tournament.maxPlayers) back("/tournaments", "full");
+  await db.tournamentEntry.upsert({
+    where: { tournamentId_userId: { tournamentId: team.tournamentId, userId: u.id } },
+    update: { teamId },
+    create: { tournamentId: team.tournamentId, userId: u.id, teamId },
+  });
+  revalidatePath("/tournaments");
+}
+
+/** Kapitán (nebo admin) přidá do týmu dalšího hráče podle @handlu. */
+export async function addTeamMember(teamId: string, fd: FormData) {
+  const u = await user();
+  const team = await db.tournamentTeam.findUnique({
+    where: { id: teamId },
+    include: { tournament: { include: { entries: true } }, entries: true },
+  });
+  if (!team || (team.captainId !== u.id && u.role !== "ADMIN")) return;
+  if (team.tournament.status !== "UPCOMING") back("/tournaments", "closed");
+  if (team.entries.length >= team.tournament.teamSize) back("/tournaments", "teamfull");
+  const p = await findPlayer(str(fd, "handle"));
+  if (!p) back("/tournaments", "notfound");
+  const e = team.tournament.entries.find((x) => x.userId === p.id);
+  if (e?.teamId) back("/tournaments", "memberbusy");
+  if (!e && team.tournament.entries.length >= team.tournament.maxPlayers) back("/tournaments", "full");
+  await db.tournamentEntry.upsert({
+    where: { tournamentId_userId: { tournamentId: team.tournamentId, userId: p.id } },
+    update: { teamId },
+    create: { tournamentId: team.tournamentId, userId: p.id, teamId },
+  });
+  revalidatePath("/tournaments");
+}
+
 export async function leaveTournament(id: string) {
   const u = await user();
-  await db.tournamentEntry.deleteMany({ where: { tournamentId: id, userId: u.id } });
+  const entry = await db.tournamentEntry.findUnique({
+    where: { tournamentId_userId: { tournamentId: id, userId: u.id } },
+    include: { team: { include: { entries: true } } },
+  });
+  if (!entry) return;
+  await db.tournamentEntry.delete({ where: { id: entry.id } });
+  const team = entry.team;
+  if (team) {
+    const rest = team.entries.filter((e) => e.userId !== u.id);
+    if (rest.length === 0) await db.tournamentTeam.delete({ where: { id: team.id } });
+    else if (team.captainId === u.id) await db.tournamentTeam.update({ where: { id: team.id }, data: { captainId: rest[0].userId } });
+  }
+  revalidatePath("/tournaments");
+}
+
+/** Zrušení turnaje (admin). Zůstane vidět jako zrušený, aby se přihlášení dozvěděli, co se stalo. */
+export async function cancelTournament(id: string) {
+  const u = await user();
+  if (u.role !== "ADMIN") return;
+  await db.tournament.update({ where: { id }, data: { status: "CANCELLED" } }).catch(() => null);
   revalidatePath("/tournaments");
 }
 
@@ -186,6 +360,32 @@ export async function leaveCustom(id: string) {
   revalidatePath("/customs");
 }
 
+/** Zrušit customku může ten, kdo ji založil, nebo admin. */
+export async function cancelCustom(id: string) {
+  const u = await user();
+  const c = await db.custom.findUnique({ where: { id } });
+  if (!c || (c.hostId !== u.id && u.role !== "ADMIN")) return;
+  await db.custom.update({ where: { id }, data: { status: "CANCELLED" } });
+  revalidatePath("/customs");
+}
+
+/** Zakladatel přidá do customky hráče podle @handlu (např. kamaráda, který zrovna není na webu). */
+export async function addToCustom(id: string, fd: FormData) {
+  const u = await user();
+  const c = await db.custom.findUnique({ where: { id }, include: { _count: { select: { entries: true } } } });
+  if (!c || (c.hostId !== u.id && u.role !== "ADMIN") || c.status !== "UPCOMING") return;
+  const p = await findPlayer(str(fd, "handle"));
+  if (!p) back("/customs", "notfound");
+  if (c._count.entries >= c.maxPlayers) back("/customs", "full");
+  await db.customEntry.upsert({
+    where: { customId_userId: { customId: id, userId: p.id } },
+    update: {},
+    create: { customId: id, userId: p.id },
+  });
+  revalidatePath("/customs");
+  back("/customs", "added");
+}
+
 /* ---------- Přátelé ---------- */
 export async function sendFriendRequest(targetId: string) {
   const u = await user();
@@ -201,6 +401,30 @@ export async function sendFriendRequest(targetId: string) {
   if (existing) return;
   await db.friendship.create({ data: { requesterId: u.id, addresseeId: targetId } });
   revalidatePath("/friends");
+  revalidatePath("/players/[handle]", "page");
+}
+
+/** Přidání přítele podle jména nebo @handlu z formuláře na stránce Přátelé. */
+export async function sendFriendRequestByHandle(fd: FormData) {
+  const u = await user();
+  const p = await findPlayer(str(fd, "handle"));
+  if (!p) back("/friends", "notfound");
+  if (p.id === u.id) back("/friends", "self");
+  const existing = await db.friendship.findFirst({
+    where: { OR: [{ requesterId: u.id, addresseeId: p.id }, { requesterId: p.id, addresseeId: u.id }] },
+  });
+  if (existing) {
+    // Pokud mi dotyčný žádost už poslal, rovnou ji potvrdíme.
+    if (existing.status === "PENDING" && existing.addresseeId === u.id) {
+      await db.friendship.update({ where: { id: existing.id }, data: { status: "ACCEPTED" } });
+      revalidatePath("/friends");
+      back("/friends", "accepted");
+    }
+    back("/friends", existing.status === "ACCEPTED" ? "already" : "pending");
+  }
+  await db.friendship.create({ data: { requesterId: u.id, addresseeId: p.id } });
+  revalidatePath("/friends");
+  back("/friends", "sent");
 }
 
 export async function acceptFriend(id: string) {

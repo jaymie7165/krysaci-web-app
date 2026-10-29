@@ -1,14 +1,16 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
-import { getT } from "@/lib/i18n";
-import { createLfg, joinLfg, closeLfg } from "@/app/actions";
+import { getT, pick } from "@/lib/i18n";
+import { addToLfg, createLfg, joinLfg, closeLfg, leaveLfg } from "@/app/actions";
+import Notice from "@/components/Notice";
 import GameSelect from "@/components/GameSelect";
 
 export const metadata = { title: "LFG" };
 
-export default async function LfgPage() {
-  const { t } = await getT();
+export default async function LfgPage({ searchParams }: { searchParams: Promise<{ msg?: string }> }) {
+  const { msg } = await searchParams;
+  const { t, locale } = await getT();
   const session = await auth();
   const [posts, games] = await Promise.all([
     db.lfgPost.findMany({
@@ -23,6 +25,7 @@ export default async function LfgPage() {
   return (
     <div className="space-y-8">
       <h1 className="text-4xl font-bold">{t("lfg")}</h1>
+      <Notice msg={msg} locale={locale} />
 
       {session?.user ? (
         <form action={createLfg} className="card grid gap-3 p-5 md:grid-cols-2">
@@ -61,9 +64,18 @@ export default async function LfgPage() {
               {p.joins.length > 0 && (
                 <p className="mt-2 text-xs text-slate-500">{p.joins.map((j) => j.user.username).join(", ")}</p>
               )}
+              {canClose && taken < p.slots && (
+                <form action={addToLfg.bind(null, p.id)} className="mt-3 flex gap-2">
+                  <input name="handle" required placeholder={pick(locale, "Přidat hráče: @handle", "Pridať hráča: @handle", "Add player: @handle")} className="input py-1.5 text-xs" />
+                  <button className="btn-ghost px-3 py-1.5 text-xs">+</button>
+                </form>
+              )}
               <div className="mt-4 flex gap-2">
                 {session?.user && !mine && !joined && taken < p.slots && (
                   <form action={joinLfg.bind(null, p.id)}><button className="btn">{t("join")}</button></form>
+                )}
+                {joined && (
+                  <form action={leaveLfg.bind(null, p.id)}><button className="btn-ghost">{t("leave")}</button></form>
                 )}
                 {taken >= p.slots && <span className="badge">{t("full")}</span>}
                 {canClose && (
