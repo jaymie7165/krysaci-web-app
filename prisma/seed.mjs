@@ -51,7 +51,7 @@ const games = [
     slug: "tavernia",
     name: "Tavernia",
     category: "Simulace / Co-op",
-    imageUrl: steam(3970530),
+    imageUrl: "/games/tavernia.jpg",
     description: "Hospodská simulace, kterou můžete hrát s kamarády.",
     sortOrder: 6,
   },
