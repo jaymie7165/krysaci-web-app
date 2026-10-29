@@ -30,7 +30,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <main className="mx-auto min-h-[75vh] max-w-7xl px-4 py-8 lg:px-8 lg:py-10">{children}</main>
         <footer className="border-t border-ink-600/50">
           <div className="mx-auto max-w-7xl space-y-2 px-4 py-8 text-xs leading-relaxed text-slate-500 lg:px-8">
-            <p>{t("footer")} · build 2026-10-28 v4</p>
+            <p>{t("footer")} · build 2026-10-29 v5</p>
             <p className="max-w-3xl">
               Play Haven isn&apos;t endorsed by Riot Games and doesn&apos;t reflect the views or opinions of Riot Games
               or anyone officially involved in producing or managing Riot Games properties. Riot Games and all

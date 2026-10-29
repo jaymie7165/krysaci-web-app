@@ -63,7 +63,7 @@ export default async function LinkedAccountsSection({ userId, locale, isMe }: { 
               <ul className="space-y-1.5 text-sm">
                 {steamData.recent.map((g) => (
                   <li key={g.appId} className="flex items-center gap-3">
-                    <SteamGameImg appId={g.appId} name={g.name} icon={g.icon} />
+                    <SteamGameImg appId={g.appId} name={g.name} icon={g.icon} src={g.img} />
                     <span className="min-w-0 flex-1 truncate text-bone">{g.name}</span>
                     <span className="text-xs text-slate-400">{g.hours2w} h / 2 {pick(locale, "týdny", "týždne", "wks")}</span>
                   </li>

@@ -1,3 +1,4 @@
+import { db } from "@/lib/db";
 import { cached } from "@/lib/cache";
 
 const OPENID = "https://steamcommunity.com/openid/login";
@@ -48,8 +49,35 @@ export type SteamSummary = {
   avatar: string;
   profileUrl: string;
   isPublic: boolean;
-  recent: { appId: number; name: string; hours2w: number; hoursTotal: number; icon?: string }[];
+  recent: { appId: number; name: string; hours2w: number; hoursTotal: number; icon?: string; img?: string | null }[];
 };
+
+/**
+ * Obrázek hry podle Steam Store. Nové hry a demoverze nemají obrázek na starých adresách
+ * (/apps/ID/header.jpg), ale obchod vrací správnou adresu. U dema se použije obrázek plné hry.
+ * Výsledek se cachuje na týden, neúspěch na 6 hodin.
+ */
+export async function getSteamAppImage(appId: number): Promise<string | null> {
+  const r = await cached<{ img: string | null; at: number }>(`steamapp:${appId}`, 7 * 24 * 3600, async () => {
+    const one = async (id: number) => {
+      const j = await fetch(`https://store.steampowered.com/api/appdetails?appids=${id}&filters=basic&l=english`, { cache: "no-store" })
+        .then((x) => x.json())
+        .catch(() => null);
+      const d = j?.[String(id)]?.data as { header_image?: string; capsule_image?: string; fullgame?: { appid?: string | number } } | undefined;
+      return d ?? null;
+    };
+    const d = await one(appId);
+    let img = d?.header_image ?? d?.capsule_image ?? null;
+    if (!img && d?.fullgame?.appid) img = (await one(Number(d.fullgame.appid)))?.header_image ?? null;
+    return { img, at: Date.now() };
+  }).catch(() => null);
+  if (!r) return null;
+  // Prázdný výsledek zkusíme znovu po 6 hodinách.
+  if (!r.img && Date.now() - r.at > 6 * 3600 * 1000) {
+    await db.statCache.delete({ where: { key: `steamapp:${appId}` } }).catch(() => null);
+  }
+  return r.img;
+}
 
 async function loadSummary(steamId: string): Promise<SteamSummary> {
   const key = process.env.STEAM_API_KEY;
@@ -77,6 +105,11 @@ async function loadSummary(steamId: string): Promise<SteamSummary> {
       })
     );
   }
+  await Promise.all(
+    recent.map(async (g) => {
+      g.img = await getSteamAppImage(g.appId);
+    })
+  );
   return {
     steamId,
     name: p.personaname,
@@ -89,7 +122,7 @@ async function loadSummary(steamId: string): Promise<SteamSummary> {
 
 /** Steam profil (cache 15 minut). */
 export function getSteamSummary(steamId: string) {
-  return cached(`steam:${steamId}`, 900, () => loadSummary(steamId));
+  return cached(`steam:v2:${steamId}`, 900, () => loadSummary(steamId));
 }
 
 /** Co právě hrají zadaní hráči na Steamu (jeden dotaz pro celou skupinu, cache 1 minuta). */

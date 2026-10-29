@@ -6,9 +6,10 @@ import { useEffect, useRef, useState } from "react";
  * Obrázek hry ze Steamu. Demo verze a některé hry nemají všechny typy obrázků,
  * proto se zkouší několik zdrojů za sebou a nakonec se ukáže iniciála.
  */
-export default function SteamGameImg({ appId, name, icon }: { appId: number; name: string; icon?: string }) {
+export default function SteamGameImg({ appId, name, icon, src }: { appId: number; name: string; icon?: string; src?: string | null }) {
   const base = `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}`;
   const sources = [
+    ...(src ? [src] : []),
     `${base}/capsule_184x69.jpg`,
     `${base}/header.jpg`,
     `${base}/capsule_sm_120.jpg`,

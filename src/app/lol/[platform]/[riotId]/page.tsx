@@ -5,6 +5,8 @@ import { getT, pick } from "@/lib/i18n";
 import { PLATFORMS, RiotError, findAccount, getLiveGame, getLolProfile, getRankHistory, parseRiotId } from "@/lib/riot";
 import LolProfileView from "@/components/LolProfileView";
 import LolSearch from "@/components/LolSearch";
+import LiveScout from "@/components/LiveScout";
+import { Suspense } from "react";
 
 export const metadata = { title: "LoL profil" };
 
@@ -91,6 +93,19 @@ export default async function LolPage({
         actions={actions}
         history={history}
         live={live}
+        scout={
+          live ? (
+            <Suspense
+              fallback={
+                <p className="card p-5 text-sm text-slate-400">
+                  {pick(locale, "Načítám scouting hráčů ve hře…", "Načítavam scouting hráčov v hre…", "Loading scouting for the game…")}
+                </p>
+              }
+            >
+              <LiveScout live={live} p={profile} locale={locale} />
+            </Suspense>
+          ) : null
+        }
         gamesParam={`/lol/${platform}/${encodeURIComponent(profile.gameName)}-${encodeURIComponent(profile.tagLine)}`}
       />
     </div>

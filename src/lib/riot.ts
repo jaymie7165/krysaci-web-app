@@ -30,7 +30,7 @@ async function riot<T>(host: string, path: string): Promise<T> {
 
 /* ---------- Data Dragon (obrázky a názvy) ---------- */
 
-type Champion = { id: string; key: string; name: string };
+type Champion = { id: string; key: string; name: string; tags: string[]; info: { attack: number; defense: number; magic: number } };
 type RuneStyle = { id: number; icon: string; slots: { runes: { id: number; icon: string }[] }[] };
 
 export type DData = {
@@ -41,7 +41,7 @@ export type DData = {
 };
 
 export async function ddragon(): Promise<DData> {
-  return cached("ddragon:v3", 60 * 60 * 12, async () => {
+  return cached("ddragon:v4", 60 * 60 * 12, async () => {
     const versions: string[] = await (await fetch("https://ddragon.leagueoflegends.com/api/versions.json")).json();
     const version = versions[0];
     const base = `https://ddragon.leagueoflegends.com/cdn/${version}/data/en_US`;
@@ -51,7 +51,7 @@ export async function ddragon(): Promise<DData> {
       fetch(`${base}/runesReforged.json`).then((r) => r.json()).catch(() => []),
     ]);
     const champs: DData["champs"] = {};
-    for (const c of Object.values(champJson.data) as Champion[]) champs[c.key] = { id: c.id, key: c.key, name: c.name };
+    for (const c of Object.values(champJson.data) as Champion[]) champs[c.key] = { id: c.id, key: c.key, name: c.name, tags: c.tags ?? [], info: c.info ?? { attack: 5, defense: 5, magic: 5 } };
     const spells: DData["spells"] = {};
     for (const s of Object.values(spellJson.data ?? {}) as { id: string; key: string }[]) spells[s.key] = s.id;
     const runes: DData["runes"] = {};
@@ -494,4 +494,55 @@ export function parseRiotId(input: string): { gameName: string; tagLine: string 
   const tagLine = raw.slice(i + 1).trim();
   if (!gameName || !/^[A-Za-z0-9]{2,5}$/.test(tagLine)) return null;
   return { gameName, tagLine };
+}
+
+/* ---------- Scouting ---------- */
+
+export type ScoutRecent = { id: string; win: boolean; champion: string; kills: number; deaths: number; assists: number; playedAt: number };
+export type Scout = {
+  puuid: string;
+  recent: ScoutRecent[]; // posledních 5 ranked solo/duo
+  top: { championId: number; champion: string; name: string; level: number; points: number }[];
+};
+
+/** Rychlý přehled hráče pro živou hru: posledních 5 ranked solo/duo her a nejhranější šampioni. Cache 15 minut. */
+export function getScout(puuid: string, platform: string) {
+  return cached<Scout>(`scout:v1:${platform}:${puuid}`, 900, async () => {
+    const region = (PLATFORMS[platform] ?? PLATFORMS[DEFAULT_PLATFORM]).region;
+    const dd = await ddragon();
+    const [ids, masteryRaw] = await Promise.all([
+      riot<string[]>(region, `/lol/match/v5/matches/by-puuid/${puuid}/ids?queue=420&start=0&count=5`).catch(() => [] as string[]),
+      riot<{ championId: number; championLevel: number; championPoints: number }[]>(
+        platform,
+        `/lol/champion-mastery/v4/champion-masteries/by-puuid/${puuid}/top?count=3`
+      ).catch(() => []),
+    ]);
+    const settled = await inBatches(ids, 5, (id) => loadMatch(region, id, dd.champs));
+    const recent: ScoutRecent[] = [];
+    for (const r of settled) {
+      if (r.status !== "fulfilled") continue;
+      const me = r.value.players.find((p) => p.puuid === puuid);
+      if (!me || r.value.remake) continue;
+      recent.push({ id: r.value.id, win: me.win, champion: me.champion, kills: me.kills, deaths: me.deaths, assists: me.assists, playedAt: r.value.playedAt });
+    }
+    recent.sort((a, b) => b.playedAt - a.playedAt);
+    return {
+      puuid,
+      recent,
+      top: masteryRaw.map((m) => {
+        const c = dd.champs[String(m.championId)];
+        return { championId: m.championId, champion: c?.id ?? "", name: c?.name ?? `#${m.championId}`, level: m.championLevel, points: m.championPoints };
+      }),
+    };
+  });
+}
+
+/** Scouting celé hry, po malých dávkách, aby se nevyčerpal limit Riot API. Hráči, které se nepodařilo načíst, chybí. */
+export async function getScoutAll(puuids: string[], platform: string): Promise<Map<string, Scout>> {
+  const out = new Map<string, Scout>();
+  const settled = await inBatches(puuids, 3, (id) => getScout(id, platform));
+  settled.forEach((r, i) => {
+    if (r.status === "fulfilled") out.set(puuids[i], r.value);
+  });
+  return out;
 }

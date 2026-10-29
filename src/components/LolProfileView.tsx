@@ -348,7 +348,7 @@ function MatchCard({ m, p, locale }: { m: LolMatch; p: LolProfile; locale: Local
 /* ---------- Hlavní zobrazení ---------- */
 
 export default function LolProfileView({
-  p, locale, actions, compact = false, history = [], live = null, gamesParam,
+  p, locale, actions, compact = false, history = [], live = null, gamesParam, scout = null,
 }: {
   p: LolProfile;
   locale: Locale;
@@ -358,6 +358,8 @@ export default function LolProfileView({
   live?: LiveGame | null;
   /** Základ adresy pro přepínač 20 / 50 zápasů (např. "/lol/eun1/Jaymie-HNZD"). */
   gamesParam?: string;
+  /** Scouting živé hry (volitelný blok pod bannerem). */
+  scout?: ReactNode;
 }) {
   const played = p.matches.filter((m) => !m.remake);
   const wins = played.filter((m) => m.win).length;
@@ -409,6 +411,7 @@ export default function LolProfileView({
       </section>
 
       {live && !compact && <LiveBanner live={live} p={p} locale={locale} />}
+      {live && !compact && scout}
 
       <div className="grid gap-3 sm:grid-cols-2">
         <RankCard title="Ranked Solo/Duo" r={p.solo} locale={locale} />
