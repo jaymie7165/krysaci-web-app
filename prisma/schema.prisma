@@ -50,6 +50,7 @@ model User {
   theme        String? // barevné téma webu (pink, indigo, ...)
   notifyDiscord Boolean @default(true) // posílat oznámení i do Discord DM přes bota
   twitchLogin  String?
+  kickLogin    String?
 
   gameProfiles      GameProfile[]
   stats             PlayerStat[]

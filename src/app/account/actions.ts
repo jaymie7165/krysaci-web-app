@@ -171,7 +171,9 @@ export async function saveNotifySettings(fd: FormData) {
   const u = await me();
   const raw = String(fd.get("twitch") ?? "").trim().replace(/^https?:\/\/(www\.)?twitch\.tv\//i, "").replace(/\/.*$/, "");
   const twitchLogin = raw && /^[a-zA-Z0-9_]{3,25}$/.test(raw) ? raw : null;
-  await db.user.update({ where: { id: u.id }, data: { notifyDiscord: fd.get("notifyDiscord") === "on", twitchLogin } });
+  const rawK = String(fd.get("kick") ?? "").trim().replace(/^https?:\/\/(www\.)?kick\.com\//i, "").replace(/\/.*$/, "");
+  const kickLogin = rawK && /^[a-zA-Z0-9_-]{3,30}$/.test(rawK) ? rawK : null;
+  await db.user.update({ where: { id: u.id }, data: { notifyDiscord: fd.get("notifyDiscord") === "on", twitchLogin, kickLogin } });
   revalidatePath("/account");
   redirect("/account?ok=notify_saved");
 }

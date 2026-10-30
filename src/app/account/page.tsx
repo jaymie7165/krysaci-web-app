@@ -36,7 +36,7 @@ export default async function AccountPage({
   }
 
   const accounts = await db.linkedAccount.findMany({ where: { userId: session.user.id } });
-  const me = await db.user.findUnique({ where: { id: session.user.id }, select: { showActivity: true, notifyDiscord: true, twitchLogin: true } });
+  const me = await db.user.findUnique({ where: { id: session.user.id }, select: { showActivity: true, notifyDiscord: true, twitchLogin: true, kickLogin: true } });
   const steam = accounts.find((a) => a.provider === "steam");
   const riot = accounts.find((a) => a.provider === "riot");
 
@@ -270,15 +270,21 @@ export default async function AccountPage({
         )}
       </section>
       <section className="card space-y-3 p-5">
-        <h2 className="text-lg font-semibold">{pick(locale, "Oznámení a Twitch", "Oznámenia a Twitch", "Notifications & Twitch")}</h2>
+        <h2 className="text-lg font-semibold">{pick(locale, "Oznámení a streamy", "Oznámenia a streamy", "Notifications & streams")}</h2>
         <form action={saveNotifySettings} className="space-y-3">
           <label className="flex items-start gap-3 text-sm text-slate-300">
             <input type="checkbox" name="notifyDiscord" defaultChecked={me?.notifyDiscord ?? true} className="mt-1 h-4 w-4 accent-violet-500" />
             <span>{pick(locale, "Posílat oznámení i do Discord zpráv (turnaje, žádosti o přátelství, tvoje tipy). Na webu je uvidíš vždy.", "Posielať oznámenia aj do Discord správ (turnaje, žiadosti o priateľstvo, tvoje tipy). Na webe ich uvidíš vždy.", "Also send notifications as Discord DMs (tournaments, friend requests, your picks). You always see them on the site.")}</span>
           </label>
-          <div>
-            <label className="label">Twitch</label>
-            <input name="twitch" defaultValue={me?.twitchLogin ?? ""} placeholder={pick(locale, "tvoje jméno na Twitchi (volitelné)", "tvoje meno na Twitchi (voliteľné)", "your Twitch name (optional)")} className="input max-w-sm" />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="label">Twitch</label>
+              <input name="twitch" defaultValue={me?.twitchLogin ?? ""} placeholder={pick(locale, "tvoje jméno na Twitchi (volitelné)", "tvoje meno na Twitchi (voliteľné)", "your Twitch name (optional)")} className="input" />
+            </div>
+            <div>
+              <label className="label">Kick</label>
+              <input name="kick" defaultValue={me?.kickLogin ?? ""} placeholder={pick(locale, "tvoje jméno na Kicku (volitelné)", "tvoje meno na Kicku (voliteľné)", "your Kick name (optional)")} className="input" />
+            </div>
           </div>
           <button className="btn">{pick(locale, "Uložit", "Uložiť", "Save")}</button>
         </form>

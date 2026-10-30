@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { getT, pick } from "@/lib/i18n";
 import { getLiveNow } from "@/lib/presence";
 import { getTwitchLive } from "@/lib/twitch";
+import { getKickLive } from "@/lib/kick";
 
 export const metadata = { title: "Co se děje teď" };
 
@@ -21,8 +22,15 @@ export default async function NowPage() {
     db.custom.findMany({ where: { status: { in: ["UPCOMING", "LIVE"] }, startsAt: { lte: soon } }, orderBy: { startsAt: "asc" }, take: 6, include: { game: true } }),
     db.lfgPost.findMany({ where: { open: true }, orderBy: { createdAt: "desc" }, take: 6, include: { game: true, author: true } }),
   ]);
-  const streamers = await db.user.findMany({ where: { twitchLogin: { not: null } }, select: { handle: true, username: true, twitchLogin: true }, take: 40 });
-  const streams = (await Promise.all(streamers.map(async (s) => ({ s, t: await getTwitchLive(s.twitchLogin) })))).filter((x) => x.t);
+  const streamers = await db.user.findMany({ where: { OR: [{ twitchLogin: { not: null } }, { kickLogin: { not: null } }] }, select: { handle: true, username: true, twitchLogin: true, kickLogin: true }, take: 60 });
+  const streams = (
+    await Promise.all(
+      streamers.flatMap((s) => [
+        getTwitchLive(s.twitchLogin).then((t) => ({ s, t, p: "Twitch" })),
+        getKickLive(s.kickLogin).then((t) => ({ s, t, p: "Kick" })),
+      ])
+    )
+  ).filter((x) => x.t);
   const byGame = new Map<string, typeof live>();
   for (const e of live) byGame.set(e.game, [...(byGame.get(e.game) ?? []), e]);
   const Box = ({ title, children, empty }: { title: string; children: React.ReactNode[]; empty: string }) => (
@@ -46,9 +54,9 @@ export default async function NowPage() {
           ))}
         </Box>
         {streams.length > 0 && (
-          <Box title={L("Na Twitchi živě", "Na Twitchi naživo", "Live on Twitch")} empty="">
-            {streams.map(({ s, t }) => (
-              <li key={s.handle}><a href={t!.url} target="_blank" rel="noopener noreferrer" className="hover:text-violet-300"><span className="text-ember">●</span> {s.username} · {t!.game} <span className="text-slate-500">· {t!.viewers}</span></a></li>
+          <Box title={L("Streamy živě", "Streamy naživo", "Live streams")} empty="">
+            {streams.map(({ s, t, p }) => (
+              <li key={s.handle + p}><a href={t!.url} target="_blank" rel="noopener noreferrer" className="hover:text-violet-300"><span className="text-ember">●</span> {s.username} · {p}{t!.game ? ` · ${t!.game}` : ""} <span className="text-slate-500">· {t!.viewers}</span></a></li>
             ))}
           </Box>
         )}

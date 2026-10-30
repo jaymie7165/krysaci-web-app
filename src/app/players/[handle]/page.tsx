@@ -8,6 +8,7 @@ import GameSelect from "@/components/GameSelect";
 import LinkedAccountsSection from "@/components/LinkedAccountsSection";
 import ShareCard from "@/components/ShareCard";
 import { getTwitchLive } from "@/lib/twitch";
+import { getKickLive } from "@/lib/kick";
 
 export async function generateMetadata({ params }: { params: Promise<{ handle: string }> }): Promise<Metadata> {
   const { handle } = await params;
@@ -32,7 +33,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ handle:
     },
   });
   if (!player) notFound();
-  const twitch = await getTwitchLive(player.twitchLogin);
+  const [twitch, kick] = await Promise.all([getTwitchLive(player.twitchLogin), getKickLive(player.kickLogin)]);
   const [badgeRows, friendCount, pickPoints] = await Promise.all([
     db.badge.findMany({ where: { userId: player.id }, orderBy: { createdAt: "desc" }, take: 30 }),
     db.friendship.count({ where: { status: "ACCEPTED", OR: [{ requesterId: player.id }, { addresseeId: player.id }] } }),
@@ -80,11 +81,14 @@ export default async function PlayerPage({ params }: { params: Promise<{ handle:
               @{player.handle} · {t("memberSince")} {dateFmt(locale, player.createdAt).split(",")[0]}
               {player.role !== "USER" && <span className="badge ml-2">{player.role}</span>}
             </p>
-            {twitch && (
-              <a href={twitch.url} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-2 rounded-lg bg-[#9146ff]/20 px-3 py-1 text-sm font-semibold text-[#c9a8ff] hover:bg-[#9146ff]/30">
-                <span className="live-dot !bg-ember" aria-hidden="true" /> LIVE na Twitchi · {twitch.game} · {twitch.viewers}
+            {[
+              { s: twitch, n: "Twitch", c: "bg-[#9146ff]/20 text-[#c9a8ff] hover:bg-[#9146ff]/30" },
+              { s: kick, n: "Kick", c: "bg-[#53fc18]/15 text-[#8dff5c] hover:bg-[#53fc18]/25" },
+            ].map((x) => x.s && (
+              <a key={x.n} href={x.s.url} target="_blank" rel="noopener noreferrer" className={`mr-2 mt-2 inline-flex items-center gap-2 rounded-lg px-3 py-1 text-sm font-semibold ${x.c}`}>
+                <span className="live-dot !bg-ember" aria-hidden="true" /> LIVE {x.n}{x.s.game ? ` · ${x.s.game}` : ""} · {x.s.viewers}
               </a>
-            )}
+            ))}
             {player.bio && <p className="mt-2 max-w-xl text-slate-300">{player.bio}</p>}
           </div>
           {session?.user && !isMe && !friendship && (
