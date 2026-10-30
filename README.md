@@ -107,6 +107,18 @@ setInterval(async () => {
 
 Poznámka: databáze webu přibyly sloupce a tabulky (`showActivity`, `verifyIcon`, `RankSnapshot`, `StatCache`). Přidá je `prisma db push` při startu, vždy do databáze webu, ne do databáze bota.
 
+## Aplikace pro počítač (Play Haven Desktop)
+
+Složka `desktop/` obsahuje Windows aplikaci (Electron). Otevře web v okně na stránce `/live`, čte lokální API League klienta
+a podle fáze hry (champ select, načítání, hra) ukazuje scouting spoluhráčů, nepřátel a doporučení. Nic nehraje za hráče.
+
+Stažení: tlačítko na Hubu vede na `/api/download`, které přesměruje na soubor `PlayHaven.exe` v posledním GitHub Release
+(proměnná `DESKTOP_GITHUB_REPO`) nebo na `DESKTOP_DOWNLOAD_URL`. Repozitář musí být veřejný, jinak se soubor nedá stáhnout bez přihlášení.
+
+Nová verze: na GitHubu vytvoř Release s tagem `desktop-v1.0.1`, workflow `.github/workflows/desktop.yml` exe sestaví a přiloží.
+Nebo exe sestav ručně (`cd desktop && npm install && npm run dist:portable`) a nahraj ho do Release jako `PlayHaven.exe`.
+Obsah aplikace (rozhraní, scouting) se mění nasazením webu, appku není potřeba přestavovat.
+
 ## Struktura
 
 ```

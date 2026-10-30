@@ -510,13 +510,17 @@ export function getScout(puuid: string, platform: string) {
   return cached<Scout>(`scout:v1:${platform}:${puuid}`, 900, async () => {
     const region = (PLATFORMS[platform] ?? PLATFORMS[DEFAULT_PLATFORM]).region;
     const dd = await ddragon();
-    const [ids, masteryRaw] = await Promise.all([
-      riot<string[]>(region, `/lol/match/v5/matches/by-puuid/${puuid}/ids?queue=420&start=0&count=5`).catch(() => [] as string[]),
+    const [idsR, masteryR] = await Promise.allSettled([
+      riot<string[]>(region, `/lol/match/v5/matches/by-puuid/${puuid}/ids?queue=420&start=0&count=5`),
       riot<{ championId: number; championLevel: number; championPoints: number }[]>(
         platform,
         `/lol/champion-mastery/v4/champion-masteries/by-puuid/${puuid}/top?count=3`
-      ).catch(() => []),
+      ),
     ]);
+    // Když Riot odmítl obě volání (limit, klíč), nic neukládáme do cache a hráč se ukáže jako nenačtený.
+    if (idsR.status === "rejected" && masteryR.status === "rejected") throw idsR.reason;
+    const ids = idsR.status === "fulfilled" ? idsR.value : [];
+    const masteryRaw = masteryR.status === "fulfilled" ? masteryR.value : [];
     const settled = await inBatches(ids, 5, (id) => loadMatch(region, id, dd.champs));
     const recent: ScoutRecent[] = [];
     for (const r of settled) {
@@ -545,4 +549,31 @@ export async function getScoutAll(puuids: string[], platform: string): Promise<M
     if (r.status === "fulfilled") out.set(puuids[i], r.value);
   });
   return out;
+}
+
+/** Riot ID (Jmeno#TAG) podle puuid, cache týden. Hráči si ho mohou změnit, proto ne déle. */
+export function getRiotIdByPuuid(puuid: string, platform: string) {
+  const region = (PLATFORMS[platform] ?? PLATFORMS[DEFAULT_PLATFORM]).region;
+  return cached<string | null>(`riotid:${puuid}`, 7 * 24 * 3600, async () => {
+    const a = await riot<{ gameName?: string; tagLine?: string }>(region, `/riot/account/v1/accounts/by-puuid/${puuid}`);
+    return a.gameName ? `${a.gameName}#${a.tagLine ?? ""}` : null;
+  });
+}
+
+/** Zobecněný build hráče na šampionovi z jeho načtených zápasů (runy, itemy, výhry). */
+export function buildFromMatches(matches: LolMatch[], champion: string) {
+  const games = matches.filter((m) => !m.remake && m.me.champion === champion);
+  if (games.length === 0) return null;
+  const top = <T,>(xs: T[], n: number) => {
+    const m = new Map<T, number>();
+    for (const x of xs) m.set(x, (m.get(x) ?? 0) + 1);
+    return [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, n).map((x) => x[0]);
+  };
+  return {
+    games: games.length,
+    wins: games.filter((g) => g.win).length,
+    keystone: top(games.map((g) => g.me.keystone).filter(Boolean), 1)[0] ?? 0,
+    secondary: top(games.map((g) => g.me.secondaryStyle).filter(Boolean), 1)[0] ?? 0,
+    items: top(games.flatMap((g) => g.me.items.slice(0, 6)).filter(Boolean), 6),
+  };
 }

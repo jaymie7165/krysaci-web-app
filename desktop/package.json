@@ -1,0 +1,26 @@
+{
+  "name": "play-haven-desktop",
+  "version": "1.0.0",
+  "description": "Play Haven: herní pomocník pro počítač (scouting z champ selectu a živé hry)",
+  "author": "Play Haven",
+  "main": "src/main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win portable nsis --x64",
+    "dist:portable": "electron-builder --win portable --x64"
+  },
+  "devDependencies": {
+    "electron": "33.4.11",
+    "electron-builder": "25.1.8"
+  },
+  "build": {
+    "appId": "cz.playhaven.desktop",
+    "productName": "Play Haven",
+    "directories": { "output": "dist" },
+    "files": ["src/**/*", "assets/**/*", "package.json"],
+    "win": { "icon": "build/icon.ico", "target": ["portable", "nsis"] },
+    "portable": { "artifactName": "PlayHaven.exe" },
+    "nsis": { "oneClick": true, "perMachine": false, "artifactName": "PlayHaven-Setup.exe", "deleteAppDataOnUninstall": false }
+  }
+}

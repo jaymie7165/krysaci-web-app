@@ -31,6 +31,7 @@ export default async function Nav() {
     { type: "link", href: "/", label: "Hub" },
     { type: "link", href: "/esports", label: "Esport", tone: "gold" },
     { type: "link", href: "/lookup", label: pick(locale, "Statistiky", "Štatistiky", "Stats") },
+    { type: "link", href: "/live", label: "Live" },
     { type: "menu", label: pick(locale, "Komunita", "Komunita", "Community"), links: community },
     {
       type: "menu",

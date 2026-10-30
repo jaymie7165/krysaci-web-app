@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { headers } from "next/headers";
 import { db } from "@/lib/db";
 import { auth, signIn } from "@/lib/auth";
 import { getT, pick, type Locale } from "@/lib/i18n";
@@ -47,6 +48,7 @@ const Icon = ({ children }: { children: ReactNode }) => (
 const SOURCE_LABEL: Record<LiveEntry["source"], string> = { lol: "LoL", steam: "Steam", discord: "Discord" };
 
 export default async function Home() {
+  const inApp = (await headers()).get("user-agent")?.includes("PlayHavenApp") ?? false;
   const { t, locale } = await getT();
   const session = await auth();
   const user = session?.user;
@@ -237,6 +239,25 @@ export default async function Home() {
           </Link>
         ))}
       </section>
+
+
+      {/* Aplikace pro počítač */}
+      {!inApp && (
+        <section className="card flex flex-wrap items-center justify-between gap-4 p-4">
+          <div className="min-w-0">
+            <p className="font-display text-base font-semibold text-bone">
+              {pick(locale, "Play Haven pro počítač", "Play Haven pre počítač", "Play Haven for desktop")}
+            </p>
+            <p className="text-sm text-slate-400">
+              {pick(locale, "Scouting spoluhráčů a nepřátel přímo z champ selectu. Jeden soubor, bez instalace.", "Scouting spoluhráčov a nepriateľov priamo z champ selectu. Jeden súbor, bez inštalácie.", "Scouting teammates and enemies straight from champ select. One file, no install.")}
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <a href="/api/download" className="btn">{pick(locale, "Stáhnout", "Stiahnuť", "Download")}</a>
+            <Link href="/live" className="btn-ghost">{pick(locale, "Více", "Viac", "More")}</Link>
+          </div>
+        </section>
+      )}
 
       <div className="grid grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <div className="space-y-8">

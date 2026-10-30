@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
-const SKIP = ["/lol", "/account", "/tickets/"];
+const SKIP = ["/lol", "/account", "/tickets/", "/live"];
 
 /**
  * Sám doaktualizuje data na stránce (kdo hraje, nové turnaje, zápasy…), takže nemusíš mačkat F5.
