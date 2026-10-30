@@ -10,7 +10,6 @@ import GameImage from "@/components/GameImage";
 import LolSearch from "@/components/LolSearch";
 import RankTag from "@/components/RankTag";
 import Onboarding from "@/components/Onboarding";
-import NewsList from "@/components/NewsList";
 
 const tag = (l: Locale) => (l === "cs" ? "cs-CZ" : l === "sk" ? "sk-SK" : "en-GB");
 
@@ -56,7 +55,7 @@ export default async function Home() {
   const user = session?.user;
   const now = new Date();
 
-  const [tournaments, customs, lfg, games, accounts, live, latestNews] = await Promise.all([
+  const [tournaments, customs, lfg, games, accounts, live, latestNews, userCount, lfgOpen, esports] = await Promise.all([
     db.tournament.findMany({
       where: { status: "UPCOMING", startsAt: { gte: now } },
       orderBy: { startsAt: "asc" },
@@ -79,6 +78,9 @@ export default async function Home() {
     user ? db.linkedAccount.findMany({ where: { userId: user.id } }) : Promise.resolve([]),
     getLiveNow().catch(() => [] as LiveEntry[]),
     db.news.findMany({ orderBy: [{ pinned: "desc" }, { createdAt: "desc" }], take: 3 }).catch(() => []),
+    db.user.count().catch(() => 0),
+    db.lfgPost.count({ where: { open: true } }).catch(() => 0),
+    db.esportsMatch.findMany({ where: { OR: [{ status: "live" }, { status: "upcoming", startsAt: { gte: now } }] }, orderBy: { startsAt: "asc" }, take: 3 }).catch(() => []),
   ]);
 
   const steam = accounts.find((a) => a.provider === "steam");
@@ -123,382 +125,285 @@ export default async function Home() {
     }).length;
   };
 
+  const topGames = [...games].sort((a, b) => liveFor(b.name) - liveFor(a.name)).slice(0, 6);
+  const Head = ({ title, href, more }: { title: string; href?: string; more?: string }) => (
+    <div className="mb-3 flex items-center justify-between gap-3">
+      <h2 className="text-lg font-bold">{title}</h2>
+      {href && <Link href={href} className="text-sm font-medium text-accent-soft hover:text-white">{more ?? t("viewAll")} →</Link>}
+    </div>
+  );
+  const stat = (n: number, label: string, icon: ReactNode) => (
+    <div className="flex items-center gap-3">
+      <span className="grid h-10 w-10 place-items-center rounded-xl bg-accent/15 text-accent-soft">{icon}</span>
+      <span className="leading-tight"><span className="num block text-xl text-white">{n.toLocaleString(tag(locale))}</span><span className="text-xs text-slate-400">{label}</span></span>
+    </div>
+  );
+
   return (
-    <div className="space-y-8">
-      {/* Pozdrav a počet hráčů online */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold md:text-3xl">
-          {user ? `${greeting}, ${firstName}` : "Play Haven"}
-        </h1>
-        <span className="inline-flex items-center gap-2 rounded-[3px] bg-ink-800 px-3 py-1.5 text-sm text-slate-300">
-          <span className="live-dot" aria-hidden="true" />
-          <span className="num text-bone">{live.length}</span>
-          {pick(locale, "hráčů právě hraje", "hráčov práve hrá", "players in game now")}
-        </span>
-      </div>
+    <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_330px]">
+      <div className="min-w-0 space-y-8">
+        {user && <Onboarding userId={user.id} locale={locale} />}
 
-      {user && <Onboarding userId={user.id} locale={locale} />}
-
-      {latestNews.length > 0 && (
-        <section className="space-y-2">
-          <div className="flex items-center justify-between">
-            <h2 className="font-semibold">{pick(locale, "Novinky", "Novinky", "News")}</h2>
-            <Link href="/news" className="text-sm text-violet-300 hover:underline">{pick(locale, "Všechny", "Všetky", "All")}</Link>
+        {/* Hero */}
+        <section className="hero-art relative overflow-hidden rounded-3xl border border-ink-600/50 p-7 md:p-10">
+          <p className="text-xs font-bold uppercase tracking-[0.3em] text-accent-soft">Play Haven</p>
+          <h1 className="mt-3 max-w-xl text-4xl font-extrabold leading-[1.02] md:text-6xl">
+            {pick(locale, "Hry jsou lepší", "Hry sú lepšie", "Games are better")}
+            <span className="block text-accent">{pick(locale, "společně.", "spoločne.", "together.")}</span>
+          </h1>
+          <p className="mt-4 max-w-md text-slate-200">
+            {user ? `${greeting}, ${firstName}. ` : ""}
+            {pick(locale, "Najdi si spoluhráče, objev nové hry a buď součástí komunity, kde se hraje, baví a vznikají nové příběhy.", "Nájdi si spoluhráčov, objav nové hry a buď súčasťou komunity, kde sa hrá, baví a vznikajú nové príbehy.", "Find teammates, discover new games and join a community where people play, have fun and make stories.")}
+          </p>
+          <form action="/search" className="mt-6 flex max-w-xl flex-col gap-2 rounded-2xl border border-ink-600/60 bg-ink-900/80 p-1.5 backdrop-blur sm:flex-row">
+            <input name="q" aria-label={pick(locale, "Hledat", "Hľadať", "Search")} placeholder={pick(locale, "Co si dnes zahraješ?", "Čo si dnes zahráš?", "What are you playing today?")} className="min-w-0 flex-1 bg-transparent px-4 py-2.5 text-sm text-white placeholder:text-slate-400 focus:outline-none" />
+            <Link href="/lfg" className="btn">{pick(locale, "Najít spoluhráče", "Nájsť spoluhráčov", "Find teammates")} →</Link>
+          </form>
+          {!user && (
+            <form action={async () => { "use server"; await signIn("discord", { redirectTo: "/" }); }} className="mt-4">
+              <button className="btn-ghost">{t("login")}</button>
+            </form>
+          )}
+          <div className="mt-8 flex flex-wrap gap-x-8 gap-y-4">
+            {stat(userCount, pick(locale, "registrovaných hráčů", "registrovaných hráčov", "registered players"),
+              <Icon><circle cx="9" cy="8" r="3.2" /><path d="M3 20c0-3.300 2.700-6 6-6s6 2.700 6 6" /><circle cx="17.500" cy="9" r="2.500" /></Icon>)}
+            {stat(lfgOpen, pick(locale, "hledá spoluhráče", "hľadá spoluhráčov", "looking for players"),
+              <Icon><circle cx="11" cy="11" r="6.500" /><path d="m20 20-4.200-4.200" /></Icon>)}
+            {stat(live.length, pick(locale, "právě hraje", "práve hrá", "playing now"),
+              <Icon><rect x="3" y="6" width="18" height="12" rx="3" /><path d="M8 10v4M6 12h4M16 11v.01M18 13v.01" /></Icon>)}
           </div>
-          <NewsList items={latestNews} locale={locale} />
         </section>
-      )}
 
-      {/* Hero: nejbližší akce */}
-      <section className="panel panel-edge relative isolate min-h-[300px] overflow-hidden">
+        {/* Nejbližší akce */}
         {feature && (
-          <GameImage
-            src={feature.x.game.imageUrl}
-            name={feature.x.game.name}
-            className="absolute inset-0 -z-10 h-full w-full object-cover opacity-45"
-          />
-        )}
-        <div className="absolute inset-0 -z-10 bg-gradient-to-r from-ink-950 via-ink-950/75 to-ink-950/10" />
-        <div className="grid h-full gap-8 p-7 md:grid-cols-[1fr_auto] md:items-end md:p-10">
-          {feature ? (
-            <>
-              <div className="max-w-2xl">
-                <p className="inline-flex items-center gap-2 text-sm font-semibold text-accent-soft">
-                  {inText(locale, feature.x.startsAt) === pick(locale, "právě začíná", "práve začína", "starting now") && (
-                    <span className="live-dot" aria-hidden="true" />
-                  )}
-                  {feature.kind === "t"
-                    ? pick(locale, "Nejbližší turnaj", "Najbližší turnaj", "Next tournament")
-                    : pick(locale, "Nejbližší customka", "Najbližšia customka", "Next custom")}
-                </p>
-                <h2 className="mt-2 text-4xl font-bold uppercase leading-[0.95] md:text-6xl">
-                  {feature.kind === "t" ? (feature.x as typeof nextT).name : (feature.x as typeof nextC).title}
-                </h2>
-                <p className="mt-3 text-slate-300">
-                  {feature.x.game.name}, {slot(locale, feature.x.startsAt).day} {slot(locale, feature.x.startsAt).date} v{" "}
-                  {slot(locale, feature.x.startsAt).time}
-                </p>
-                <div className="mt-6 flex flex-wrap gap-3">
-                  <Link href={feature.kind === "t" ? "/tournaments" : "/customs"} className="btn">
-                    {pick(locale, "Přidat se", "Pridať sa", "Join")}
-                  </Link>
-                  <Link href={feature.kind === "t" ? "/tournaments" : "/customs"} className="btn-ghost">
-                    {pick(locale, "Detaily", "Detaily", "Details")}
-                  </Link>
-                </div>
-              </div>
-              <div className="md:text-right">
-                <p className="text-sm text-slate-400">{pick(locale, "Začíná", "Začína", "Starts")}</p>
-                <p className="num text-4xl text-white md:text-5xl">{inText(locale, feature.x.startsAt)}</p>
-                <p className="mt-2 text-sm text-slate-300">
-                  <span className="num text-bone">{feature.x._count.entries}</span>/{feature.x.maxPlayers}{" "}
-                  {pick(locale, "hráčů", "hráčov", "players")}
-                </p>
-              </div>
-            </>
-          ) : (
-            <div className="max-w-xl">
-              <h2 className="text-4xl font-bold uppercase leading-[0.95] md:text-5xl">
-                {user ? pick(locale, "Dnes je volno", "Dnes je voľno", "Nothing planned") : t("hub_guest_title")}
-              </h2>
-              <p className="mt-3 text-slate-300">
-                {user
-                  ? pick(locale, "Založ customku nebo najdi partu a rozjeď večer.", "Založ customku alebo nájdi partiu a rozbehni večer.", "Start a custom or find a squad and get the evening going.")
-                  : t("hub_guest_text")}
+          <Link href={feature.kind === "t" ? "/tournaments" : "/customs"} className="card flex flex-wrap items-center gap-4 p-4 transition hover:border-accent">
+            <GameImage src={feature.x.game.imageUrl} name={feature.x.game.name} className="h-14 w-24 rounded-lg object-cover" />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold uppercase tracking-wider text-accent-soft">
+                {feature.kind === "t" ? pick(locale, "Nejbližší turnaj", "Najbližší turnaj", "Next tournament") : pick(locale, "Nejbližší customka", "Najbližšia customka", "Next custom")}
               </p>
-              <div className="mt-6 flex flex-wrap gap-3">
-                {user ? (
-                  <>
-                    <Link href="/customs" className="btn">{pick(locale, "Založit customku", "Založiť customku", "Create a custom")}</Link>
-                    <Link href="/lfg" className="btn-ghost">{t("hub_find_party")}</Link>
-                  </>
-                ) : (
-                  <form
-                    action={async () => {
-                      "use server";
-                      await signIn("discord", { redirectTo: "/" });
-                    }}
-                  >
-                    <button className="btn">{t("login")}</button>
-                  </form>
-                )}
-              </div>
+              <p className="truncate text-lg font-bold text-white">{feature.kind === "t" ? (feature.x as typeof nextT).name : (feature.x as typeof nextC).title}</p>
+              <p className="text-sm text-slate-400">{feature.x.game.name} · {slot(locale, feature.x.startsAt).day} {slot(locale, feature.x.startsAt).date} {slot(locale, feature.x.startsAt).time}</p>
+            </div>
+            <div className="text-right">
+              <p className="num text-2xl text-white">{inText(locale, feature.x.startsAt)}</p>
+              <p className="text-xs text-slate-400">{feature.x._count.entries}/{feature.x.maxPlayers} {pick(locale, "hráčů", "hráčov", "players")}</p>
+            </div>
+          </Link>
+        )}
+
+        {/* Oblíbené hry */}
+        <section>
+          <Head title={pick(locale, "Oblíbené hry v komunitě", "Obľúbené hry v komunite", "Popular games")} href="/games" more={pick(locale, "Zobrazit všechny hry", "Zobraziť všetky hry", "All games")} />
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+            {topGames.map((g) => {
+              const n = liveFor(g.name);
+              return (
+                <Link key={g.id} href={`/games/${g.slug}`} className="group relative block aspect-[3/4] overflow-hidden rounded-2xl border border-ink-600/50 bg-ink-900 transition hover:border-accent">
+                  <GameImage src={g.imageUrl} name={g.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-ink-950 via-ink-950/30 to-transparent" />
+                  <div className="absolute inset-x-0 bottom-0 p-3">
+                    <p className="text-sm font-bold leading-tight text-white">{g.name}</p>
+                    <p className="mt-1 flex items-center gap-1.5 text-xs text-slate-300"><span className="live-dot" aria-hidden="true" />{n} online</p>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* LFG */}
+        <section>
+          <Head title={pick(locale, "LFG – Lidé hledají spoluhráče", "LFG – Ľudia hľadajú spoluhráčov", "LFG – players looking for teammates")} href="/lfg" more={pick(locale, "Zobrazit vše", "Zobraziť všetko", "View all")} />
+          {lfg.length === 0 ? (
+            <p className="card p-5 text-sm text-slate-400">{t("noData")}</p>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-3">
+              {lfg.map((p) => (
+                <article key={p.id} className="card flex flex-col gap-3 p-4">
+                  <div className="flex items-center gap-3">
+                    <GameImage src={p.game.imageUrl} name={p.game.name} className="h-11 w-11 rounded-xl object-cover" />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold text-white">{p.game.name}</p>
+                      <p className="truncate text-xs text-slate-400">{p.author.username}{p.rankHint ? ` · ${p.rankHint}` : ""}</p>
+                    </div>
+                    <span className="ml-auto rounded-lg bg-accent/15 px-2 py-1 text-xs font-bold text-accent-soft">{p._count.joins + 1}/{p.slots}</span>
+                  </div>
+                  <p className="font-semibold text-white">{p.title}</p>
+                  {p.description && <p className="line-clamp-2 text-sm text-slate-400">{p.description}</p>}
+                  <Link href="/lfg" className="btn mt-auto">{pick(locale, "Přidat se", "Pridať sa", "Join")} →</Link>
+                </article>
+              ))}
             </div>
           )}
-        </div>
-      </section>
-
-      {/* Hledání hráče */}
-      <section aria-label={pick(locale, "Hledání hráče", "Hľadanie hráča", "Player search")}>
-        <LolSearch locale={locale} />
-      </section>
-
-      {/* Rychlé akce */}
-      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {[
-          { href: "/lfg", title: t("hub_find_party"), text: pick(locale, "Najdi partu na dnešek", "Nájdi partiu na dnes", "Find a squad for tonight"),
-            icon: <Icon><circle cx="9" cy="8" r="3.2" /><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" /><circle cx="17.5" cy="9" r="2.5" /><path d="M16 14.3c3 .2 5 2.3 5 5.7" /></Icon> },
-          { href: "/customs", title: pick(locale, "Založit customku", "Založiť customku", "Create a custom"), text: pick(locale, "Vlastní hra pro kohokoliv", "Vlastná hra pre kohokoľvek", "Your own game, open to all"),
-            icon: <Icon><rect x="3.5" y="3.5" width="17" height="17" rx="2" /><path d="M12 8v8M8 12h8" /></Icon> },
-          { href: "/lookup", title: pick(locale, "Statistiky hráčů", "Štatistiky hráčov", "Player stats"), text: pick(locale, "LoL profil se vším", "LoL profil so všetkým", "Full LoL profiles"),
-            icon: <Icon><circle cx="11" cy="11" r="6.5" /><path d="m20 20-4.2-4.2" /></Icon> },
-          { href: "/tournaments", title: t("tournaments"), text: pick(locale, "Přihlas se a soutěž", "Prihlás sa a súťaž", "Sign up and compete"),
-            icon: <Icon><path d="M7 4h10v5a5 5 0 0 1-10 0V4Z" /><path d="M7 6H4v2a3 3 0 0 0 3 3M17 6h3v2a3 3 0 0 1-3 3M9 20h6M12 14v6" /></Icon> },
-        ].map((a) => (
-          <Link key={a.href} href={a.href} className="card group flex items-start gap-3 p-4 transition hover:border-accent hover:bg-ink-700">
-            <span className="mt-0.5 text-accent-soft transition group-hover:text-white">{a.icon}</span>
-            <span className="min-w-0">
-              <span className="block font-display text-base font-semibold text-bone">{a.title}</span>
-              <span className="mt-0.5 block text-sm text-slate-400">{a.text}</span>
-            </span>
-          </Link>
-        ))}
-      </section>
-
-
-      {/* Aplikace pro počítač */}
-      {!inApp && (
-        <section className="card flex flex-wrap items-center justify-between gap-4 p-4">
-          <div className="min-w-0">
-            <p className="font-display text-base font-semibold text-bone">
-              {pick(locale, "Play Haven pro počítač", "Play Haven pre počítač", "Play Haven for desktop")}
-            </p>
-            <p className="text-sm text-slate-400">
-              {pick(locale, "Scouting spoluhráčů a nepřátel přímo z champ selectu. Jeden soubor, bez instalace.", "Scouting spoluhráčov a nepriateľov priamo z champ selectu. Jeden súbor, bez inštalácie.", "Scouting teammates and enemies straight from champ select. One file, no install.")}
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <a href="/api/download" className="btn">{pick(locale, "Stáhnout", "Stiahnuť", "Download")}</a>
-            <Link href="/live" className="btn-ghost">{pick(locale, "Více", "Viac", "More")}</Link>
-          </div>
         </section>
-      )}
 
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-        <div className="space-y-8">
-          {/* Právě hrají */}
-          <section>
-            <div className="mb-3 flex items-center gap-3">
-              <h2 className="text-xl font-semibold">{pick(locale, "Právě hrají", "Práve hrajú", "In game now")}</h2>
-              <span className="hud-line flex-1" aria-hidden="true" />
+        {/* Právě hrají */}
+        <section>
+          <Head title={pick(locale, "Komunita právě teď", "Komunita práve teraz", "Community right now")} href="/now" more={pick(locale, "Více", "Viac", "More")} />
+          {!user ? (
+            <div className="card p-5 text-sm text-slate-300">
+              {pick(locale, `Právě hraje ${live.length} hráčů. Přihlas se přes Discord a uvidíš, kdo a co.`, `Práve hrá ${live.length} hráčov. Prihlás sa cez Discord a uvidíš, kto a čo.`, `${live.length} players are in a game right now. Sign in with Discord to see who and what.`)}
             </div>
-            {!user ? (
-              <div className="card p-5 text-sm text-slate-300">
-                {pick(
-                  locale,
-                  `Právě hraje ${live.length} hráčů. Přihlas se přes Discord a uvidíš, kdo a co.`,
-                  `Práve hrá ${live.length} hráčov. Prihlás sa cez Discord a uvidíš, kto a čo.`,
-                  `${live.length} players are in a game right now. Sign in with Discord to see who and what.`
-                )}
+          ) : live.length === 0 ? (
+            <div className="card p-5 text-sm text-slate-400">
+              {pick(locale, "Zrovna nikdo nehraje. Aktivita se ukáže, jakmile někdo spustí hru.", "Práve nikto nehrá. Aktivita sa ukáže, hneď ako niekto spustí hru.", "Nobody is playing right now. Activity shows up as soon as someone launches a game.")}
+            </div>
+          ) : (
+            <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {live.slice(0, 8).map((e) => (
+                <li key={e.userId}>
+                  <Link href={`/players/${e.handle}`} className="card flex items-center gap-3 p-3 transition hover:border-accent">
+                    {e.avatarUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={e.avatarUrl} alt="" className="h-10 w-10 rounded-full" />
+                    ) : (<span className="h-10 w-10 rounded-full bg-ink-600" />)}
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-semibold text-white">{e.username}</span>
+                      <span className="block truncate text-xs text-pulse">{e.game}</span>
+                      {e.detail && <span className="block truncate text-xs text-slate-400">{e.detail}</span>}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        {!inApp && (
+          <section className="card flex flex-wrap items-center justify-between gap-4 p-5">
+            <div className="min-w-0">
+              <p className="font-bold text-white">{pick(locale, "Play Haven pro počítač", "Play Haven pre počítač", "Play Haven for desktop")}</p>
+              <p className="text-sm text-slate-400">{pick(locale, "Scouting spoluhráčů a nepřátel přímo z champ selectu. Jeden soubor, bez instalace.", "Scouting spoluhráčov a nepriateľov priamo z champ selectu. Jeden súbor, bez inštalácie.", "Scouting teammates and enemies straight from champ select. One file, no install.")}</p>
+            </div>
+            <div className="flex gap-2">
+              <a href="/api/download" className="btn">{pick(locale, "Stáhnout", "Stiahnuť", "Download")}</a>
+              <Link href="/live" className="btn-ghost">{pick(locale, "Více", "Viac", "More")}</Link>
+            </div>
+          </section>
+        )}
+
+        <section aria-label={pick(locale, "Hledání hráče", "Hľadanie hráča", "Player search")}>
+          <LolSearch locale={locale} />
+        </section>
+      </div>
+
+      {/* Pravý panel */}
+      <aside className="space-y-6">
+        {user && (
+          <section className="card space-y-3 p-4">
+            <div className="flex items-center gap-3">
+              {user.image ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={user.image} alt="" className="h-11 w-11 rounded-full" />
+              ) : (<span className="h-11 w-11 rounded-full bg-ink-600" />)}
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-bold text-white">{user.name}</p>
+                <Link href={`/players/${user.handle}`} className="text-xs text-accent-soft hover:text-white">{t("nav_profile")}</Link>
               </div>
-            ) : live.length === 0 ? (
-              <div className="card p-5 text-sm text-slate-400">
-                {pick(
-                  locale,
-                  "Zrovna nikdo nehraje. Propojené účty a Discord ukážou aktivitu hned, jak někdo spustí hru.",
-                  "Práve nikto nehrá. Prepojené účty a Discord ukážu aktivitu hneď, ako niekto spustí hru.",
-                  "Nobody is in a game right now. Linked accounts and Discord show activity as soon as someone launches a game."
-                )}
-              </div>
-            ) : (
-              <ul className="grid gap-2 sm:grid-cols-2">
-                {live.slice(0, 8).map((e) => (
-                  <li key={e.userId}>
-                    <Link href={`/players/${e.handle}`} className="card flex items-center gap-3 p-3 transition hover:border-accent hover:bg-ink-700">
-                      {e.avatarUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={e.avatarUrl} alt="" className="h-10 w-10 rounded-full" />
-                      ) : (
-                        <span className="h-10 w-10 rounded-full bg-ink-600" />
-                      )}
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate font-medium text-bone">{e.username}</span>
-                        <span className="block truncate text-sm text-pulse">{e.game}</span>
-                        {e.detail && <span className="block truncate text-xs text-slate-400">{e.detail}</span>}
-                      </span>
-                      <span className="badge shrink-0">{SOURCE_LABEL[e.source]}</span>
+            </div>
+            <div className="rounded-xl bg-ink-950/50 p-3">
+              <p className="text-xs text-slate-400">LoL, Solo/Duo</p>
+              {myLol?.solo ? (
+                <div className="mt-1 flex items-baseline justify-between">
+                  <RankTag tier={myLol.solo.tier} sub={["MASTER", "GRANDMASTER", "CHALLENGER"].includes(myLol.solo.tier) ? "" : myLol.solo.division} />
+                  <span className="num text-lg text-white">{myLol.solo.lp} LP</span>
+                </div>
+              ) : riot ? (
+                <p className="mt-1 text-sm text-slate-300">{riot.displayName}, {PLATFORMS[riot.region ?? ""]?.label ?? riot.region}</p>
+              ) : (
+                <p className="mt-1 text-sm text-slate-400">{pick(locale, "Propoj Riot ID a uvidíš tady svůj rank.", "Prepoj Riot ID a uvidíš tu svoj rank.", "Link your Riot ID to see your rank here.")}</p>
+              )}
+            </div>
+            <p className="flex justify-between text-sm"><span className="text-slate-400">Steam</span><span className="truncate font-medium text-bone">{steam ? steam.displayName : pick(locale, "Nepropojeno", "Neprepojené", "Not linked")}</span></p>
+            <Link href={riot ? `/lol/${riot.region ?? DEFAULT_PLATFORM}/${encodeURIComponent(riot.gameName ?? "")}-${encodeURIComponent(riot.tagLine ?? "")}` : "/account"} className="btn w-full">
+              {riot ? pick(locale, "Moje LoL statistiky", "Moje LoL štatistiky", "My LoL stats") : pick(locale, "Propojit herní účty", "Prepojiť herné účty", "Link game accounts")}
+            </Link>
+          </section>
+        )}
+
+        <section className="card p-4">
+          <Head title={pick(locale, "Právě se hraje", "Práve sa hrá", "Playing now")} href="/now" more={pick(locale, "Zobrazit vše", "Zobraziť všetko", "View all")} />
+          <ul className="space-y-2">
+            {topGames.slice(0, 4).map((g) => (
+              <li key={g.id}>
+                <Link href={`/games/${g.slug}`} className="flex items-center gap-3 rounded-xl p-1.5 transition hover:bg-ink-700/60">
+                  <GameImage src={g.imageUrl} name={g.name} className="h-11 w-11 rounded-lg object-cover" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-semibold text-white">{g.name}</span>
+                    <span className="block text-xs text-slate-400">{g.category}</span>
+                  </span>
+                  <span className="flex items-center gap-1.5 text-xs text-slate-300"><span className="live-dot" aria-hidden="true" />{liveFor(g.name)}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <section className="card p-4">
+          <Head title={pick(locale, "Aktuálně v esportu", "Aktuálne v esporte", "Esports now")} href="/esports" more={pick(locale, "Zobrazit vše", "Zobraziť všetko", "View all")} />
+          {esports.length === 0 ? (
+            <p className="text-sm text-slate-400">{t("noData")}</p>
+          ) : (
+            <ul className="space-y-2">
+              {esports.map((m) => (
+                <li key={m.id}>
+                  <Link href="/esports" className="block rounded-xl bg-ink-950/40 p-3 transition hover:bg-ink-700/60">
+                    <p className="flex items-center justify-between text-xs text-slate-400">
+                      <span>{m.league}</span>
+                      {m.status === "live" ? <span className="flex items-center gap-1 font-semibold text-ember"><span className="live-dot !bg-ember" />LIVE</span> : <span>{inText(locale, m.startsAt)}</span>}
+                    </p>
+                    <p className="mt-1 flex items-center justify-between text-sm font-bold text-white">
+                      <span className="truncate">{m.teamA}</span>
+                      <span className="px-2 text-xs text-slate-500">{m.status === "live" ? `${m.scoreA ?? 0}:${m.scoreB ?? 0}` : "vs"}</span>
+                      <span className="truncate text-right">{m.teamB}</span>
+                    </p>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        {events.length > 0 && (
+          <section className="card p-4">
+            <Head title={t("hub_happening")} />
+            <ul className="space-y-1">
+              {events.map((e) => {
+                const s = slot(locale, e.startsAt);
+                const free = Math.max(0, e.max - e.entries);
+                return (
+                  <li key={e.key}>
+                    <Link href={e.href} className="flex items-center gap-3 rounded-xl p-1.5 transition hover:bg-ink-700/60">
+                      <span className="w-12 shrink-0 text-center"><span className="block text-[11px] text-slate-400">{s.day} {s.date}</span><span className="num block text-sm text-accent-soft">{s.time}</span></span>
+                      <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-white">{e.title}</span><span className="block truncate text-xs text-slate-400">{e.kind}, {e.game}</span></span>
+                      <span className={`badge shrink-0 ${free === 0 ? "text-ember" : ""}`}>{free === 0 ? t("full") : `${free} ${t("hub_free")}`}</span>
                     </Link>
                   </li>
-                ))}
-              </ul>
-            )}
-          </section>
-
-          {/* Hry */}
-          <section>
-            <div className="mb-3 flex items-center gap-3">
-              <h2 className="text-xl font-semibold">{t("games")}</h2>
-              <span className="hud-line flex-1" aria-hidden="true" />
-              <Link href="/games" className="text-sm text-accent-soft hover:text-white">{t("viewAll")}</Link>
-            </div>
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-              {games.map((g) => {
-                const n = liveFor(g.name);
-                return (
-                  <Link
-                    key={g.id}
-                    href={`/games/${g.slug}`}
-                    className="group relative block aspect-[4/3] overflow-hidden rounded-[3px] border border-ink-600/70 bg-ink-900 transition hover:border-accent"
-                  >
-                    <GameImage src={g.imageUrl} name={g.name} className="h-full w-full transition duration-500 group-hover:scale-105" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-ink-950 via-ink-950/20 to-transparent" />
-                    {n > 0 && (
-                      <span className="absolute right-2 top-2 inline-flex items-center gap-1.5 rounded-[3px] bg-ink-950/80 px-2 py-1 text-xs text-bone">
-                        <span className="live-dot" aria-hidden="true" />
-                        <span className="num">{n}</span>
-                      </span>
-                    )}
-                    <div className="absolute inset-x-0 bottom-0 p-3">
-                      <p className="font-display text-base font-semibold leading-tight text-white">{g.name}</p>
-                      <p className="text-xs text-slate-300">{g.category}</p>
-                    </div>
-                  </Link>
                 );
               })}
-            </div>
+            </ul>
           </section>
-        </div>
+        )}
 
-        <aside className="space-y-8">
-          {/* Můj profil a rank */}
-          <section className="panel panel-edge p-5">
-            {user ? (
-              <>
-                <div className="flex items-center gap-3">
-                  {user.image ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={user.image} alt="" className="h-12 w-12 rounded-full" />
-                  ) : (
-                    <span className="h-12 w-12 rounded-full bg-ink-600" />
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-display text-lg font-bold text-bone">{user.name}</p>
-                    <Link href={`/players/${user.handle}`} className="text-sm text-accent-soft hover:text-white">{t("nav_profile")}</Link>
-                  </div>
-                </div>
-
-                <div className="mt-5 rounded-[3px] bg-ink-950/60 p-4">
-                  <p className="text-xs text-slate-400">LoL, Solo/Duo</p>
-                  {myLol?.solo ? (
-                    <>
-                      <div className="mt-1 flex items-baseline justify-between">
-                        <RankTag
-                          tier={myLol.solo.tier}
-                          sub={["MASTER", "GRANDMASTER", "CHALLENGER"].includes(myLol.solo.tier) ? "" : myLol.solo.division}
-                        />
-                        <span className="num text-xl text-bone">{myLol.solo.lp} LP</span>
-                      </div>
-                      <p className="mt-1 text-sm text-slate-400">
-                        {myLol.solo.wins}W {myLol.solo.losses}L,{" "}
-                        {Math.round((myLol.solo.wins / Math.max(1, myLol.solo.wins + myLol.solo.losses)) * 100)} %
-                      </p>
-                    </>
-                  ) : riot ? (
-                    <p className="mt-1 text-sm text-slate-300">
-                      {riot.displayName}, {PLATFORMS[riot.region ?? ""]?.label ?? riot.region}
-                    </p>
-                  ) : (
-                    <p className="mt-1 text-sm text-slate-400">
-                      {pick(locale, "Propoj Riot ID a uvidíš tady svůj rank.", "Prepoj Riot ID a uvidíš tu svoj rank.", "Link your Riot ID to see your rank here.")}
-                    </p>
-                  )}
-                </div>
-
-                <ul className="mt-3 space-y-2 text-sm">
-                  <li className="flex items-center justify-between gap-3">
-                    <span className="text-slate-400">Steam</span>
-                    <span className="truncate font-medium text-bone">{steam ? steam.displayName : pick(locale, "Nepropojeno", "Neprepojené", "Not linked")}</span>
-                  </li>
-                </ul>
-
-                <Link href={riot ? `/lol/${riot.region ?? DEFAULT_PLATFORM}/${encodeURIComponent(riot.gameName ?? "")}-${encodeURIComponent(riot.tagLine ?? "")}` : "/account"} className="btn mt-5 w-full">
-                  {riot ? pick(locale, "Moje LoL statistiky", "Moje LoL štatistiky", "My LoL stats") : pick(locale, "Propojit herní účty", "Prepojiť herné účty", "Link game accounts")}
-                </Link>
-                {riot && steam ? null : riot ? (
-                  <Link href="/account" className="mt-2 block text-center text-sm text-accent-soft hover:text-white">
-                    {pick(locale, "Propojit Steam", "Prepojiť Steam", "Link Steam")}
+        <section className="card p-4">
+          <Head title={pick(locale, "Novinky", "Novinky", "News")} href="/news" more={pick(locale, "Zobrazit vše", "Zobraziť všetko", "View all")} />
+          {latestNews.length === 0 ? (
+            <p className="text-sm text-slate-400">{pick(locale, "Zatím žádné novinky.", "Zatiaľ žiadne novinky.", "No news yet.")}</p>
+          ) : (
+            <ul className="space-y-3">
+              {latestNews.map((n) => (
+                <li key={n.id}>
+                  <Link href="/news" className="block rounded-xl p-1.5 transition hover:bg-ink-700/60">
+                    <p className="text-sm font-semibold text-white">{n.pinned && "📌 "}{n.title}</p>
+                    <p className="line-clamp-2 text-xs text-slate-400">{n.body}</p>
                   </Link>
-                ) : null}
-              </>
-            ) : (
-              <div className="space-y-4 text-center">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/brand/logo-full.png" alt="Play Haven" className="mx-auto w-40" />
-                <p className="text-sm leading-relaxed text-slate-300">{t("hub_progress_guest")}</p>
-                <form
-                  action={async () => {
-                    "use server";
-                    await signIn("discord", { redirectTo: "/" });
-                  }}
-                >
-                  <button className="btn w-full">{t("login")}</button>
-                </form>
-              </div>
-            )}
-          </section>
-
-          {/* Chystá se */}
-          <section>
-            <div className="mb-3 flex items-center gap-3">
-              <h2 className="text-xl font-semibold">{t("hub_happening")}</h2>
-              <span className="hud-line flex-1" aria-hidden="true" />
-            </div>
-            {events.length === 0 ? (
-              <p className="card p-4 text-sm text-slate-400">{t("noData")}</p>
-            ) : (
-              <ul className="divide-y divide-ink-600/60 border-y border-ink-600/60">
-                {events.map((e) => {
-                  const s = slot(locale, e.startsAt);
-                  const free = Math.max(0, e.max - e.entries);
-                  return (
-                    <li key={e.key}>
-                      <Link href={e.href} className="flex items-center gap-3 py-3 transition hover:bg-ink-800/60">
-                        <div className="w-14 shrink-0 text-center">
-                          <p className="text-xs text-slate-400">{s.day} {s.date}</p>
-                          <p className="num text-lg text-accent-soft">{s.time}</p>
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate font-display font-semibold text-bone">{e.title}</p>
-                          <p className="truncate text-xs text-slate-400">{e.kind}, {e.game}</p>
-                        </div>
-                        <span className={`badge shrink-0 ${free === 0 ? "text-ember" : ""}`}>
-                          {free === 0 ? t("full") : `${free} ${t("hub_free")}`}
-                        </span>
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </section>
-
-          {/* LFG */}
-          <section>
-            <div className="mb-3 flex items-center gap-3">
-              <h2 className="text-xl font-semibold">{t("lfg")}</h2>
-              <span className="hud-line flex-1" aria-hidden="true" />
-              <Link href="/lfg" className="text-sm text-accent-soft hover:text-white">{t("viewAll")}</Link>
-            </div>
-            {lfg.length === 0 ? (
-              <p className="card p-4 text-sm text-slate-400">{t("noData")}</p>
-            ) : (
-              <ul className="divide-y divide-ink-600/60 border-y border-ink-600/60">
-                {lfg.map((p) => (
-                  <li key={p.id}>
-                    <Link href="/lfg" className="flex items-center gap-3 py-3 transition hover:bg-ink-800/60">
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-display font-semibold text-bone">{p.title}</p>
-                        <p className="truncate text-xs text-slate-400">{p.game.name}, {p.author.username}</p>
-                      </div>
-                      <span className="badge shrink-0 text-pulse">{p._count.joins + 1}/{p.slots}</span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-        </aside>
-      </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </aside>
     </div>
   );
 }

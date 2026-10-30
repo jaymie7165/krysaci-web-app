@@ -10,6 +10,7 @@ import { LOCALES } from "@/lib/i18n";
 import { pragueToDate } from "@/lib/time";
 import { allow } from "@/lib/rateLimit";
 import { audit } from "@/lib/audit";
+import { isTheme } from "@/lib/themes";
 
 async function user() {
   const s = await auth();
@@ -554,4 +555,12 @@ export async function dismissOnboarding() {
   const u = await user();
   await db.user.update({ where: { id: u.id }, data: { onboardingDismissed: true } });
   revalidatePath("/");
+}
+
+/** Uloží barevné téma. Přihlášenému k účtu (platí i v aplikaci), všem do cookie. */
+export async function setTheme(key: string) {
+  if (!isTheme(key)) return;
+  (await cookies()).set("ph_theme", key, { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
+  const s = await auth();
+  if (s?.user?.id) await db.user.update({ where: { id: s.user.id }, data: { theme: key } }).catch(() => null);
 }

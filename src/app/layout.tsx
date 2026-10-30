@@ -3,6 +3,8 @@ import "./globals.css";
 import Nav from "@/components/Nav";
 import AutoRefresh from "@/components/AutoRefresh";
 import { getT } from "@/lib/i18n";
+import { getTheme } from "@/lib/theme";
+import Sidebar from "@/components/Sidebar";
 
 // Stránky čtou data z databáze, nechceme je předgenerovat při buildu.
 export const dynamic = "force-dynamic";
@@ -14,22 +16,30 @@ export const metadata: Metadata = {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const { t, locale } = await getT();
+  const theme = await getTheme();
   return (
-    <html lang={locale}>
+    <html lang={locale} data-theme={theme}>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link
-          href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Figtree:wght@400;500;600&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap"
           rel="stylesheet"
         />
       </head>
       <body>
         <Nav />
         <AutoRefresh />
-        <main className="mx-auto min-h-[75vh] max-w-7xl px-4 py-8 lg:px-8 lg:py-10">{children}</main>
+        <div className="lg:grid lg:grid-cols-[240px_minmax(0,1fr)]">
+          <aside className="sticky top-16 hidden h-[calc(100vh-4rem)] overflow-y-auto border-r border-ink-600/40 px-4 py-4 lg:block">
+            <Sidebar />
+          </aside>
+          <main className="min-h-[75vh] min-w-0 px-4 py-6 lg:px-8 lg:py-8">
+            <div className="mx-auto max-w-6xl">{children}</div>
+          </main>
+        </div>
         <footer className="border-t border-ink-600/50">
-          <div className="mx-auto max-w-7xl space-y-2 px-4 py-8 text-xs leading-relaxed text-slate-500 lg:px-8">
+          <div className="mx-auto max-w-6xl space-y-2 px-4 py-8 text-xs leading-relaxed text-slate-500 lg:pl-[272px] lg:pr-8">
             <p>{t("footer")} · build 2026-10-30 v6</p>
             <p className="flex gap-4">
               <a href="/legal/terms" className="hover:text-slate-300">{locale === "en" ? "Terms" : "Podmínky"}</a>

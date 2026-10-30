@@ -3,6 +3,8 @@ import { auth, signIn } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getT, pick } from "@/lib/i18n";
 import { DEFAULT_PLATFORM, PLATFORMS, profileIconUrl } from "@/lib/riot";
+import ThemePicker from "@/components/ThemePicker";
+import { getTheme } from "@/lib/theme";
 import { deleteAccount, checkRiotVerify, linkRiot, setShowActivity, setValorantShare, startRiotVerify, unlinkAccount } from "./actions";
 
 export const metadata = { title: "Propojené účty" };
@@ -266,6 +268,12 @@ export default async function AccountPage({
           </form>
         )}
       </section>
+      <section className="card space-y-3 p-5">
+        <h2 className="text-lg font-semibold">{pick(locale, "Vzhled webu", "Vzhľad webu", "Appearance")}</h2>
+        <p className="text-sm text-slate-400">{pick(locale, "Vyber si barvu. Uloží se k tvému účtu, takže stejná bude i v aplikaci pro počítač.", "Vyber si farbu. Uloží sa k tvojmu účtu, takže rovnaká bude aj v aplikácii pre počítač.", "Pick a colour. It is saved to your account, so the desktop app uses it too.")}</p>
+        <ThemePicker current={await getTheme()} locale={locale} />
+      </section>
+
       <section className="card space-y-4 p-5">
         <h2 className="text-lg font-semibold">{pick(locale, "Moje data", "Moje dáta", "My data")}</h2>
         <p className="text-sm text-slate-400">

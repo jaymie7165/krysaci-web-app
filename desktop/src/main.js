@@ -39,7 +39,7 @@ function createWindow() {
   const cfg = readConfig();
   win = new BrowserWindow({
     width: 1180, height: 820, minWidth: 420, minHeight: 600,
-    backgroundColor: "#0a0814",
+    backgroundColor: cfg.bg || "#0c070e",
     title: "Play Haven",
     icon: path.join(__dirname, "..", "assets", "icon.png"),
     autoHideMenuBar: true,
@@ -47,6 +47,15 @@ function createWindow() {
     webPreferences: { preload: path.join(__dirname, "preload.js"), contextIsolation: true, nodeIntegration: false, sandbox: true },
   });
   win.setMenu(null);
+  // Barva okna se řídí tématem, které si hráč zvolil na webu (pozadí se pamatuje na příští start).
+  const syncTheme = () => {
+    win.webContents
+      .executeJavaScript(`(() => { const v = getComputedStyle(document.documentElement).getPropertyValue("--ink-950").trim().split(/\\s+/).map(Number); return v.length === 3 && v.every((n) => n >= 0) ? "#" + v.map((n) => n.toString(16).padStart(2, "0")).join("") : null; })()`)
+      .then((hex) => { if (hex) { win.setBackgroundColor(hex); writeConfig({ bg: hex }); } })
+      .catch(() => null);
+  };
+  win.webContents.on("did-finish-load", syncTheme);
+  win.webContents.on("did-navigate-in-page", syncTheme);
   // Web pozná aplikaci podle "PlayHavenApp" v user agentu. "Electron" z něj odebereme, aby přihlášení přes Discord fungovalo.
   const ua = win.webContents.userAgent.replace(/ Electron\/\S+/, "").replace(/ play-haven-desktop\/\S+/, "");
   win.webContents.setUserAgent(`${ua} PlayHavenApp/${app.getVersion()}`);

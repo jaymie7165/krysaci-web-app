@@ -100,7 +100,7 @@ export default async function TournamentsPage({ searchParams }: { searchParams: 
                     const spots = x.teamSize - tm.entries.length;
                     const iAmCaptain = !!me && (tm.captainId === me.id || isAdmin);
                     return (
-                      <div key={tm.id} className={`rounded-[3px] border p-3 ${mineTeam ? "border-accent bg-accent/10" : "border-ink-600/70 bg-ink-900/60"}`}>
+                      <div key={tm.id} className={`rounded-lg border p-3 ${mineTeam ? "border-accent bg-accent/10" : "border-ink-600/70 bg-ink-900/60"}`}>
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <p className="font-semibold text-white">
                             {tm.name}
@@ -134,7 +134,7 @@ export default async function TournamentsPage({ searchParams }: { searchParams: 
                     </p>
                   )}
                   {open && me && !myTeam && (
-                    <details className="rounded-[3px] border border-dashed border-ink-600 p-3">
+                    <details className="rounded-lg border border-dashed border-ink-600 p-3">
                       <summary className="cursor-pointer text-sm font-medium text-accent-soft">
                         {pick(locale, "Přihlásit vlastní tým", "Prihlásiť vlastný tím", "Register your own team")}
                       </summary>
@@ -158,6 +158,7 @@ export default async function TournamentsPage({ searchParams }: { searchParams: 
               <div className="flex flex-wrap items-center justify-between gap-2 border-t border-ink-600/60 px-5 py-3">
                 <span className="flex flex-wrap items-center gap-3 text-sm text-slate-400">
                   {x.entries.length}/{x.maxPlayers} {t("players_short")}
+                  <Link href={`/tournaments/${x.id}`} className="text-violet-300 hover:underline">{pick(locale, "Pavouk a výsledky", "Pavúk a výsledky", "Bracket & results")}</Link>
                   {isAdmin && x.status !== "CANCELLED" && x.status !== "FINISHED" && (
                     <form action={cancelTournament.bind(null, x.id)}>
                       <button className="text-xs text-slate-500 hover:text-ember">{pick(locale, "Zrušit turnaj", "Zrušiť turnaj", "Cancel")}</button>

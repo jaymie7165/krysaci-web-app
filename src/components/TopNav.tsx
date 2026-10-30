@@ -4,100 +4,69 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 
-export type NavItem =
-  | { type: "link"; href: string; label: string; tone?: "gold" }
-  | { type: "menu"; label: string; links: readonly (readonly [string, string])[] };
+export type TopTab = { href: string; label: string; tone?: "gold" };
 
 export default function TopNav({
-  items,
+  tabs,
   logo,
+  drawer,
   children,
+  menuLabel,
 }: {
-  items: NavItem[];
+  tabs: TopTab[];
   logo: ReactNode;
+  drawer: ReactNode;
   children: ReactNode;
+  menuLabel: string;
 }) {
   const pathname = usePathname();
-  const [open, setOpen] = useState<string | null>(null);
-
+  const [open, setOpen] = useState(false);
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/"));
 
-  useEffect(() => setOpen(null), [pathname]);
+  useEffect(() => setOpen(false), [pathname]);
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(null);
-    const onClick = (e: MouseEvent) => {
-      if (!(e.target as HTMLElement).closest("[data-menu]")) setOpen(null);
-    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
     document.addEventListener("keydown", onKey);
-    document.addEventListener("click", onClick);
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.removeEventListener("click", onClick);
-    };
+    return () => document.removeEventListener("keydown", onKey);
   }, []);
 
-  const flat = items.flatMap((i) => (i.type === "link" ? [[i.href, i.label, i.tone] as const] : i.links.map(([h, l]) => [h, l, undefined] as const)));
-
   return (
-    <header className="sticky top-0 z-40 border-b border-ink-600/60 bg-ink-950/90 backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-7xl items-center gap-6 px-4 lg:px-8">
-        {logo}
+    <header className="sticky top-0 z-40 border-b border-ink-600/50 bg-ink-950/85 backdrop-blur-xl">
+      <div className="flex h-16 items-center gap-4 px-4 lg:px-6">
+        <button
+          type="button"
+          aria-label={menuLabel}
+          aria-expanded={open}
+          onClick={() => setOpen((o) => !o)}
+          className="grid h-9 w-9 place-items-center rounded-lg text-slate-300 hover:bg-ink-700 hover:text-white lg:hidden"
+        >
+          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+            <path d="M4 7h16M4 12h16M4 17h16" />
+          </svg>
+        </button>
+        <div className="lg:w-[208px]">{logo}</div>
         <nav className="hidden h-full items-stretch gap-1 lg:flex" aria-label="Hlavní navigace">
-          {items.map((it) =>
-            it.type === "link" ? (
-              <Link
-                key={it.href}
-                href={it.href}
-                data-active={isActive(it.href)}
-                aria-current={isActive(it.href) ? "page" : undefined}
-                className={`tab ${it.tone === "gold" ? "tab-gold" : ""}`}
-              >
-                {it.label}
-              </Link>
-            ) : (
-              <div key={it.label} className="relative flex h-full items-stretch" data-menu>
-                <button
-                  type="button"
-                  aria-expanded={open === it.label}
-                  aria-haspopup="true"
-                  data-active={it.links.some(([h]) => isActive(h))}
-                  onClick={() => setOpen(open === it.label ? null : it.label)}
-                  className="tab gap-1"
-                >
-                  {it.label}
-                  <svg viewBox="0 0 12 12" className="h-3 w-3 opacity-70" aria-hidden="true">
-                    <path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.5" />
-                  </svg>
-                </button>
-                {open === it.label && (
-                  <div className="card absolute left-0 top-full mt-px min-w-48 py-1 shadow-2xl">
-                    {it.links.map(([h, l]) => (
-                      <Link key={h} href={h} data-active={isActive(h)} className="menu-item">
-                        {l}
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )
-          )}
+          {tabs.map((tb) => (
+            <Link
+              key={tb.href}
+              href={tb.href}
+              data-active={isActive(tb.href)}
+              aria-current={isActive(tb.href) ? "page" : undefined}
+              className={`tab ${tb.tone === "gold" ? "tab-gold" : ""}`}
+            >
+              {tb.label}
+            </Link>
+          ))}
         </nav>
-        <div className="ml-auto flex items-center gap-3">{children}</div>
+        <div className="ml-auto flex items-center gap-2 sm:gap-3">{children}</div>
       </div>
 
-      {/* Mobil: ploché menu s posuvem */}
-      <nav className="flex gap-1 overflow-x-auto border-t border-ink-600/40 px-3 lg:hidden" aria-label="Hlavní navigace">
-        {flat.map(([h, l, tone]) => (
-          <Link
-            key={h}
-            href={h}
-            data-active={isActive(h)}
-            className={`tab h-11 whitespace-nowrap ${tone === "gold" ? "tab-gold" : ""}`}
-          >
-            {l}
-          </Link>
-        ))}
-      </nav>
+      {/* Mobil: výsuvné menu */}
+      {open && (
+        <div className="fixed inset-x-0 bottom-0 top-16 z-50 overflow-y-auto bg-ink-950/95 p-4 backdrop-blur-xl lg:hidden">
+          <div className="mx-auto max-w-sm">{drawer}</div>
+        </div>
+      )}
     </header>
   );
 }

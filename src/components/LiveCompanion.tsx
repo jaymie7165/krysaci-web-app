@@ -220,7 +220,7 @@ function Board({ data, busy, L }: { data: ScoutResponse; busy: boolean; L: (cs: 
     const wins = p.recent.filter((r) => r.win).length;
     const total = p.rank ? p.rank.wins + p.rank.losses : 0;
     return (
-      <li className={`rounded-[3px] p-2 ${p.me ? "bg-accent/20" : "bg-ink-900/70"}`}>
+      <li className={`rounded-lg p-2 ${p.me ? "bg-accent/20" : "bg-ink-900/70"}`}>
         <div className="flex items-center gap-2">
           {p.champion ? <Pic src={champImg(v, p.champion)} className="h-10 w-10 shrink-0 rounded-[2px]" /> : <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[2px] bg-ink-700 text-xs text-slate-500">?</span>}
           <div className="min-w-0 flex-1">

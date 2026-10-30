@@ -56,7 +56,7 @@ export default async function LiveScout({ live, p, locale }: { live: LiveGame; p
           const wins = s?.recent.filter((r) => r.win).length ?? 0;
           const [gn, tl] = pl.name.split("#");
           return (
-            <li key={pl.puuid} className={`rounded-[3px] p-2 ${pl.puuid === p.puuid ? "bg-accent/20" : "bg-ink-900/70"}`}>
+            <li key={pl.puuid} className={`rounded-lg p-2 ${pl.puuid === p.puuid ? "bg-accent/20" : "bg-ink-900/70"}`}>
               <div className="flex items-center gap-2">
                 <Img src={champ(dd, pl.champion)} className="h-9 w-9 shrink-0 rounded-[2px]" />
                 <div className="min-w-0 flex-1">

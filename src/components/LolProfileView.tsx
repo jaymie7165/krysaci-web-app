@@ -118,7 +118,7 @@ function LiveBanner({ live, p, locale }: { live: LiveGame; p: LolProfile; locale
             {team.map((pl) => (
               <li
                 key={pl.puuid}
-                className={`flex items-center gap-2 rounded-[3px] px-2 py-1.5 ${pl.puuid === p.puuid ? "bg-accent/25" : "bg-ink-900/70"}`}
+                className={`flex items-center gap-2 rounded-lg px-2 py-1.5 ${pl.puuid === p.puuid ? "bg-accent/25" : "bg-ink-900/70"}`}
               >
                 <Img src={champImg(p.dd, pl.champion)} className="h-8 w-8 rounded-[2px]" />
                 <span className="flex flex-col">
@@ -194,8 +194,8 @@ function RankChart({ history, locale }: { history: Snapshot[]; locale: Locale })
       <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label={pick(locale, "Graf vývoje ranku", "Graf vývoja ranku", "Rank progress chart")}>
         <defs>
           <linearGradient id="lp-fill" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.45" />
-            <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0" />
+            <stop offset="0%" style={{ stopColor: "rgb(var(--accent))" }} stopOpacity="0.45" />
+            <stop offset="100%" style={{ stopColor: "rgb(var(--accent))" }} stopOpacity="0" />
           </linearGradient>
         </defs>
         {ticks.map((v) => (
@@ -207,7 +207,7 @@ function RankChart({ history, locale }: { history: Snapshot[]; locale: Locale })
           </g>
         ))}
         <path d={area} fill="url(#lp-fill)" />
-        <path d={line} fill="none" stroke="#b79cff" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+        <path d={line} fill="none" style={{ stroke: "rgb(var(--accent-soft))" }} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
         {pts.length <= 60 && pts.map((x, i) => <circle key={i} cx={X(x.t)} cy={Y(x.v)} r="3" fill="#ece9f8" />)}
         <text x={padL} y={H - 6} fontSize="11" fill="#9b93c4">{df.format(new Date(t0))}</text>
         <text x={W - padR} y={H - 6} fontSize="11" fill="#9b93c4" textAnchor="end">{df.format(new Date(t1))}</text>
@@ -241,7 +241,7 @@ function MatchCard({ m, p, locale }: { m: LolMatch; p: LolProfile; locale: Local
         </div>
         <div className="flex items-center gap-1.5">
           <div className="relative">
-            <Img src={champImg(p.dd, me.champion)} className="h-12 w-12 rounded-[3px]" />
+            <Img src={champImg(p.dd, me.champion)} className="h-12 w-12 rounded-lg" />
             <span className="absolute -bottom-1 -right-1 rounded-[2px] bg-ink-950 px-1 text-[10px] text-bone">{me.champLevel}</span>
           </div>
           <span className="flex flex-col gap-0.5">
@@ -397,8 +397,8 @@ export default function LolProfileView({
       {/* Hlavička */}
       <section className="panel panel-edge flex flex-wrap items-center gap-5 p-5">
         <div className="relative">
-          <Img src={`${CDN}/${p.dd.version}/img/profileicon/${p.iconId}.png`} className="h-20 w-20 rounded-[3px] border border-ink-600" />
-          <span className="num absolute -bottom-2 left-1/2 -translate-x-1/2 rounded-[3px] bg-ink-950 px-2 py-0.5 text-xs text-bone ring-1 ring-ink-600">{p.level}</span>
+          <Img src={`${CDN}/${p.dd.version}/img/profileicon/${p.iconId}.png`} className="h-20 w-20 rounded-lg border border-ink-600" />
+          <span className="num absolute -bottom-2 left-1/2 -translate-x-1/2 rounded-lg bg-ink-950 px-2 py-0.5 text-xs text-bone ring-1 ring-ink-600">{p.level}</span>
         </div>
         <div className="min-w-0 flex-1">
           <h2 className="truncate text-3xl font-bold">
@@ -429,7 +429,7 @@ export default function LolProfileView({
                     <Link
                       key={n}
                       href={n === 20 ? gamesParam : `${gamesParam}?games=${n}`}
-                      className={`rounded-[3px] px-2.5 py-1 ${p.requested === n ? "bg-accent text-white" : "bg-ink-800 text-slate-300 hover:text-white"}`}
+                      className={`rounded-lg px-2.5 py-1 ${p.requested === n ? "bg-accent text-white" : "bg-ink-800 text-slate-300 hover:text-white"}`}
                     >
                       {n}
                     </Link>
@@ -541,7 +541,7 @@ export default function LolProfileView({
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
             {p.mastery.map((m) => (
               <div key={m.championId} className="card flex flex-col items-center p-3 text-center">
-                <Img src={champImg(p.dd, m.champion)} className="h-14 w-14 rounded-[3px]" />
+                <Img src={champImg(p.dd, m.champion)} className="h-14 w-14 rounded-lg" />
                 <p className="mt-2 text-sm font-medium text-bone">{m.name}</p>
                 <p className="text-xs text-slate-400">M{m.level}</p>
                 <p className="num text-sm text-accent-soft">{fmt(m.points)}</p>

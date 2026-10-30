@@ -47,6 +47,7 @@ model User {
   bannedAt     DateTime? // zablokovaný hráč se přihlásí, ale nemůže nic dělat
   banReason    String?
   onboardingDismissed Boolean @default(false)
+  theme        String? // barevné téma webu (pink, indigo, ...)
 
   gameProfiles      GameProfile[]
   stats             PlayerStat[]
@@ -66,6 +67,8 @@ model User {
   captainOf         TournamentTeam[]  @relation("TeamCaptain")
   picks             Pick[]
   news              News[]
+  teamMemberships   TeamMember[]
+  badges            Badge[]
 }
 
 model Game {
@@ -169,6 +172,9 @@ model Tournament {
   organizer   User              @relation(fields: [organizerId], references: [id], onDelete: Cascade)
   entries     TournamentEntry[]
   teams       TournamentTeam[]
+  matches     TournamentMatch[]
+  championName String?
+  settledAt   DateTime?
 
   @@index([startsAt])
 }
@@ -195,6 +201,7 @@ model TournamentTeam {
   createdAt    DateTime          @default(now())
   tournament   Tournament        @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
   captain      User              @relation("TeamCaptain", fields: [captainId], references: [id], onDelete: Cascade)
+  teamId       String? // odkaz na trvalý tým, ze kterého vznikl
   entries      TournamentEntry[]
 
   @@unique([tournamentId, name])
@@ -389,4 +396,58 @@ model AuditLog {
   createdAt DateTime @default(now())
 
   @@index([createdAt])
+}
+
+/// Zápas v turnajovém pavouku (single elimination). Účastník = "e:<entryId>" (solo) nebo "t:<teamId>".
+model TournamentMatch {
+  id           String   @id @default(cuid())
+  tournamentId String
+  round        Int // 1 = první kolo
+  position     Int // pořadí v kole od 0
+  refA         String?
+  refB         String?
+  nameA        String?
+  nameB        String?
+  scoreA       Int?
+  scoreB       Int?
+  winner       String? // "A" | "B"
+  status       String   @default("pending") // pending | reported | confirmed
+  reportedById String?
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+
+  @@unique([tournamentId, round, position])
+}
+
+/// Trvalý tým, který hráči přihlašují do turnajů opakovaně.
+model Team {
+  id        String       @id @default(cuid())
+  name      String       @unique
+  tag       String?
+  logoUrl   String?
+  captainId String
+  createdAt DateTime     @default(now())
+  members   TeamMember[]
+}
+
+model TeamMember {
+  id     String @id @default(cuid())
+  teamId String
+  userId String
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+}
+
+/// Odznak na profilu hráče.
+model Badge {
+  id           String   @id @default(cuid())
+  userId       String
+  key          String // champion | finalist | player
+  tournamentId String   @default("")
+  label        String?
+  createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key, tournamentId])
 }

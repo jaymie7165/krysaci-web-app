@@ -19,6 +19,15 @@ const MSG: Record<string, { ok: boolean; t: [string, string, string] }> = {
   teamok: { ok: true, t: ["Tým je přihlášený.", "Tím je prihlásený.", "Team registered."] },
   locked: { ok: false, t: ["Zápas už začal nebo skončil, tip nejde změnit.", "Zápas už začal alebo skončil, tip nejde zmeniť.", "The match has started or finished, picks are locked."] },
   ratelimit: { ok: false, t: ["Zpomal, děláš to moc rychle. Zkus to za pár minut.", "Spomaľ, robíš to príliš rýchlo. Skús to o pár minút.", "Slow down, you are doing that too fast. Try again in a few minutes."] },
+  started: { ok: true, t: ["Turnaj běží, pavouk je vylosovaný.", "Turnaj beží, pavúk je vylosovaný.", "Tournament started, bracket drawn."] },
+  fewteams: { ok: false, t: ["Na pavouk jsou potřeba aspoň 2 přihlášení (týmy).", "Na pavúk sú potrební aspoň 2 prihlásení (tímy).", "At least 2 participants (teams) are needed."] },
+  reported: { ok: true, t: ["Výsledek nahlášen, čeká na potvrzení pořadatele.", "Výsledok nahlásený, čaká na potvrdenie organizátora.", "Result reported, awaiting organizer confirmation."] },
+  badscore: { ok: false, t: ["Neplatné skóre (nesmí být remíza).", "Neplatné skóre (nesmie byť remíza).", "Invalid score (no draws)."] },
+  notyours: { ok: false, t: ["Tohle není tvůj zápas.", "Toto nie je tvoj zápas.", "This isn't your match."] },
+  teamcreated: { ok: true, t: ["Tým je založený.", "Tím je založený.", "Team created."] },
+  badurl: { ok: false, t: ["Logo musí být odkaz začínající https://.", "Logo musí byť odkaz začínajúci https://.", "Logo must be an https:// link."] },
+  left: { ok: true, t: ["Hotovo.", "Hotovo.", "Done."] },
+  toomany: { ok: false, t: ["Tým má víc členů, než turnaj dovoluje.", "Tím má viac členov, než turnaj dovoľuje.", "The team has more members than the tournament allows."] },
   added: { ok: true, t: ["Hráč přidán.", "Hráč pridaný.", "Player added."] },
 };
 

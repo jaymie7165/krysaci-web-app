@@ -31,6 +31,21 @@ export default async function PlayerPage({ params }: { params: Promise<{ handle:
     },
   });
   if (!player) notFound();
+  const [badgeRows, friendCount, pickPoints] = await Promise.all([
+    db.badge.findMany({ where: { userId: player.id }, orderBy: { createdAt: "desc" }, take: 30 }),
+    db.friendship.count({ where: { status: "ACCEPTED", OR: [{ requesterId: player.id }, { addresseeId: player.id }] } }),
+    db.pick.aggregate({ where: { userId: player.id }, _sum: { points: true } }).then((r) => r._sum.points ?? 0).catch(() => 0),
+  ]);
+  const badges: { icon: string; label: string; sub?: string }[] = [
+    ...badgeRows.map((b) => ({
+      icon: b.key === "champion" ? "🏆" : b.key === "finalist" ? "🥈" : "🎮",
+      label: b.key === "champion" ? pick(locale, "Vítěz turnaje", "Víťaz turnaja", "Tournament champion") : b.key === "finalist" ? pick(locale, "Finalista", "Finalista", "Finalist") : pick(locale, "Účastník turnaje", "Účastník turnaja", "Tournament player"),
+      sub: b.label ?? undefined,
+    })),
+    ...(Date.now() - player.createdAt.getTime() > 90 * 86400000 ? [{ icon: "🛡️", label: pick(locale, "Veterán (90+ dní)", "Veterán (90+ dní)", "Veteran (90+ days)") }] : []),
+    ...(friendCount >= 5 ? [{ icon: "🤝", label: pick(locale, "Společenský (5+ přátel)", "Spoločenský (5+ priateľov)", "Social (5+ friends)") }] : []),
+    ...(pickPoints >= 100 ? [{ icon: "🔮", label: pick(locale, "Věštec (100+ bodů v Pickems)", "Veštec (100+ bodov v Pickems)", "Oracle (100+ Pickems points)") }] : []),
+  ];
 
   const isMe = session?.user?.id === player.id;
   const games = isMe ? await db.game.findMany({ orderBy: { sortOrder: "asc" } }) : [];
@@ -85,6 +100,17 @@ export default async function PlayerPage({ params }: { params: Promise<{ handle:
           />
         </div>
       </section>
+
+      {badges.length > 0 && (
+        <section>
+          <h2 className="mb-3 text-2xl font-semibold">{pick(locale, "Odznaky", "Odznaky", "Badges")}</h2>
+          <div className="flex flex-wrap gap-2">
+            {badges.map((b, i) => (
+              <span key={i} className="chip" title={b.sub}>{b.icon} {b.label}{b.sub ? ` · ${b.sub}` : ""}</span>
+            ))}
+          </div>
+        </section>
+      )}
 
       <LinkedAccountsSection userId={player.id} locale={locale} isMe={isMe} />
 
