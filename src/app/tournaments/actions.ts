@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
+import { notify } from "@/lib/notify";
 import { buildMatches, roundsFor, usersOf, type Part } from "@/lib/bracket";
 
 async function me() {
@@ -49,6 +50,7 @@ export async function startTournament(id: string) {
     await tx.tournamentMatch.createMany({ data: matches.map((m) => ({ ...m, tournamentId: id })) });
   });
   await audit({ id: u.id, name: u.name }, "tournament.start", id, t.name);
+  await notify(t.entries.map((e) => e.userId), { kind: "tournament", title: `Turnaj ${t.name} začal, pavouk je vylosovaný`, url: `/tournaments/${id}`, dedupeKey: `tstart:${id}` });
   // volné losy rovnou postoupí
   const fresh = await db.tournamentMatch.findMany({ where: { tournamentId: id, round: 1 } });
   for (const m of fresh) {
@@ -75,6 +77,7 @@ export async function reportResult(matchId: string, fd: FormData) {
     await audit({ id: u.id, name: u.name }, "match.confirm", m.id, `${a}:${b}`);
   } else {
     await db.tournamentMatch.update({ where: { id: m.id }, data: { scoreA: a, scoreB: b, winner: a > b ? "A" : "B", status: "reported", reportedById: u.id } });
+    await notify(t.organizerId, { kind: "match", title: `Nahlášený výsledek ${m.nameA} ${a}:${b} ${m.nameB} čeká na potvrzení`, url: `/tournaments/${t.id}`, dedupeKey: `mrep:${m.id}:${a}:${b}` });
   }
   done(t.id, canManage ? undefined : "reported");
 }
@@ -107,6 +110,7 @@ async function settle(tid: string, matchId: string, winner: "A" | "B", sa: numbe
   const winName = winner === "A" ? m.nameA : m.nameB;
   const loseRef = winner === "A" ? m.refB : m.refA;
   await db.tournamentMatch.update({ where: { id: m.id }, data: { winner, scoreA: sa, scoreB: sb, status: "confirmed" } });
+  if (!bye) await notify([...usersOf(t, m.refA), ...usersOf(t, m.refB)], { kind: "match", title: `Výsledek potvrzen: ${m.nameA} vs ${m.nameB}`, url: `/tournaments/${tid}`, dedupeKey: `mok:${m.id}` });
 
   // body za výhru/prohru (ne za volný los)
   if (!bye) {

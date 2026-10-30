@@ -15,7 +15,7 @@ export default async function Nav() {
   const user = session?.user;
   const theme = await getTheme();
   const pending = user
-    ? await db.friendship.count({ where: { addresseeId: user.id, status: "PENDING" } }).catch(() => 0)
+    ? await db.notification.count({ where: { userId: user.id, readAt: null } }).catch(() => 0)
     : 0;
   const L = (cs: string, sk: string, en: string) => pick(locale, cs, sk, en);
 
@@ -59,7 +59,7 @@ export default async function Nav() {
   );
 
   const bell = user ? (
-    <Link href="/friends" aria-label={L("Žádosti o přátelství", "Žiadosti o priateľstvo", "Friend requests")} className="relative grid h-9 w-9 place-items-center rounded-full text-slate-300 hover:bg-ink-700 hover:text-white">
+    <Link href="/notifications" aria-label={L("Oznámení", "Oznámenia", "Notifications")} className="relative grid h-9 w-9 place-items-center rounded-full text-slate-300 hover:bg-ink-700 hover:text-white">
       <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M6 9a6 6 0 0 1 12 0c0 6 2 7 2 7H4s2-1 2-7zM10 20a2 2 0 0 0 4 0" />
       </svg>

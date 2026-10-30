@@ -10,6 +10,7 @@ import { LOCALES } from "@/lib/i18n";
 import { pragueToDate } from "@/lib/time";
 import { allow } from "@/lib/rateLimit";
 import { audit } from "@/lib/audit";
+import { notify, webhook } from "@/lib/notify";
 import { isTheme } from "@/lib/themes";
 
 async function user() {
@@ -130,9 +131,11 @@ export async function createLfg(fd: FormData) {
       rankHint: str(fd, "rankHint"),
     });
   if (!parsed.success) return;
-  await db.lfgPost.create({
+  const post = await db.lfgPost.create({
     data: { ...parsed.data, description: parsed.data.description || null, rankHint: parsed.data.rankHint || null, authorId: u.id },
+    include: { game: true },
   });
+  await webhook(`LFG: ${post.title}`, `${u.name ?? "Hráč"} hledá spoluhráče do ${post.game.name} (${post.slots} míst).`, "/lfg");
   revalidatePath("/lfg");
 }
 
@@ -145,6 +148,7 @@ export async function joinLfg(postId: string) {
     update: {},
     create: { postId, userId: u.id },
   });
+  await notify(post.authorId, { kind: "lfg", title: `${u.name ?? "Hráč"} se přidal do tvého LFG: ${post.title}`, url: "/lfg", dedupeKey: `lfgjoin:${postId}:${u.id}` });
   revalidatePath("/lfg");
 }
 
@@ -205,7 +209,8 @@ export async function createTournament(fd: FormData) {
       prize: str(fd, "prize"),
     });
   if (!parsed.success) return;
-  await db.tournament.create({ data: { ...parsed.data, prize: parsed.data.prize || null, organizerId: u.id } });
+  const tour = await db.tournament.create({ data: { ...parsed.data, prize: parsed.data.prize || null, organizerId: u.id } });
+  await webhook(`Nový turnaj: ${tour.name}`, `${tour.description.slice(0, 200)}`, `/tournaments/${tour.id}`);
   revalidatePath("/tournaments");
 }
 
@@ -353,6 +358,7 @@ export async function createCustom(fd: FormData) {
     data: { ...parsed.data, description: parsed.data.description || null, hostId: u.id },
   });
   await db.customEntry.create({ data: { customId: custom.id, userId: u.id } });
+  await webhook(`Nová customka: ${custom.title}`, `${u.name ?? "Hráč"} zakládá customku, můžeš se přidat na webu.`, "/customs");
   revalidatePath("/customs");
 }
 
@@ -365,6 +371,7 @@ export async function joinCustom(id: string) {
     update: {},
     create: { customId: id, userId: u.id },
   });
+  await notify(c.hostId, { kind: "custom", title: `${u.name ?? "Hráč"} se přidal do tvé customky: ${c.title}`, url: "/customs", dedupeKey: `cjoin:${id}:${u.id}` });
   revalidatePath("/customs");
 }
 
@@ -414,6 +421,7 @@ export async function sendFriendRequest(targetId: string) {
   });
   if (existing) return;
   await db.friendship.create({ data: { requesterId: u.id, addresseeId: targetId } });
+  await notify(targetId, { kind: "friend", title: `${u.name ?? "Někdo"} ti poslal žádost o přátelství`, url: "/friends" });
   revalidatePath("/friends");
   revalidatePath("/players/[handle]", "page");
 }
@@ -438,13 +446,16 @@ export async function sendFriendRequestByHandle(fd: FormData) {
     back("/friends", existing.status === "ACCEPTED" ? "already" : "pending");
   }
   await db.friendship.create({ data: { requesterId: u.id, addresseeId: p.id } });
+  await notify(p.id, { kind: "friend", title: `${u.name ?? "Někdo"} ti poslal žádost o přátelství`, url: "/friends" });
   revalidatePath("/friends");
   back("/friends", "sent");
 }
 
 export async function acceptFriend(id: string) {
   const u = await user();
+  const f = await db.friendship.findFirst({ where: { id, addresseeId: u.id, status: "PENDING" } });
   await db.friendship.updateMany({ where: { id, addresseeId: u.id }, data: { status: "ACCEPTED" } });
+  if (f) await notify(f.requesterId, { kind: "friend", title: `${u.name ?? "Hráč"} přijal tvoji žádost o přátelství`, url: "/friends" });
   revalidatePath("/friends");
 }
 

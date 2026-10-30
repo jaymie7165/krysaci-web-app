@@ -48,6 +48,8 @@ model User {
   banReason    String?
   onboardingDismissed Boolean @default(false)
   theme        String? // barevné téma webu (pink, indigo, ...)
+  notifyDiscord Boolean @default(true) // posílat oznámení i do Discord DM přes bota
+  twitchLogin  String?
 
   gameProfiles      GameProfile[]
   stats             PlayerStat[]
@@ -69,6 +71,7 @@ model User {
   news              News[]
   teamMemberships   TeamMember[]
   badges            Badge[]
+  notifications     Notification[]
 }
 
 model Game {
@@ -450,4 +453,22 @@ model Badge {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, key, tournamentId])
+}
+
+/// Oznámení hráči. Zobrazí se na webu a bot je může rozeslat do Discord DM (poll přes /api/bot/outbox).
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  kind      String // friend | tournament | match | custom | lfg | pickem
+  title     String
+  body      String?
+  url       String?
+  dedupeKey String?   @unique
+  readAt    DateTime?
+  sentAt    DateTime? // kdy ho převzal bot
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt, createdAt])
+  @@index([sentAt])
 }

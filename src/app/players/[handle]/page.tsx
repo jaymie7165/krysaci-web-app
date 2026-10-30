@@ -7,6 +7,7 @@ import { sendFriendRequest, updateProfile, saveGameProfile } from "@/app/actions
 import GameSelect from "@/components/GameSelect";
 import LinkedAccountsSection from "@/components/LinkedAccountsSection";
 import ShareCard from "@/components/ShareCard";
+import { getTwitchLive } from "@/lib/twitch";
 
 export async function generateMetadata({ params }: { params: Promise<{ handle: string }> }): Promise<Metadata> {
   const { handle } = await params;
@@ -31,6 +32,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ handle:
     },
   });
   if (!player) notFound();
+  const twitch = await getTwitchLive(player.twitchLogin);
   const [badgeRows, friendCount, pickPoints] = await Promise.all([
     db.badge.findMany({ where: { userId: player.id }, orderBy: { createdAt: "desc" }, take: 30 }),
     db.friendship.count({ where: { status: "ACCEPTED", OR: [{ requesterId: player.id }, { addresseeId: player.id }] } }),
@@ -78,6 +80,11 @@ export default async function PlayerPage({ params }: { params: Promise<{ handle:
               @{player.handle} · {t("memberSince")} {dateFmt(locale, player.createdAt).split(",")[0]}
               {player.role !== "USER" && <span className="badge ml-2">{player.role}</span>}
             </p>
+            {twitch && (
+              <a href={twitch.url} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-2 rounded-lg bg-[#9146ff]/20 px-3 py-1 text-sm font-semibold text-[#c9a8ff] hover:bg-[#9146ff]/30">
+                <span className="live-dot !bg-ember" aria-hidden="true" /> LIVE na Twitchi · {twitch.game} · {twitch.viewers}
+              </a>
+            )}
             {player.bio && <p className="mt-2 max-w-xl text-slate-300">{player.bio}</p>}
           </div>
           {session?.user && !isMe && !friendship && (

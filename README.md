@@ -129,3 +129,17 @@ src/app/actions.ts       server actions (profil, LFG, turnaje, tickety, …)
 src/app/api/bot/*        API pro Discord bota
 src/app/*/page.tsx       stránky modulů
 ```
+
+## Discord: oznámení a přidání ze serveru
+
+Web ukládá oznámení (žádosti o přátelství, start turnaje, nahlášené výsledky, přidání do tvé customky/LFG, tipy v Pickems).
+Hráč je vidí pod zvonečkem a bot je může poslat do Discord DM. Všechny endpointy chtějí hlavičku `x-bot-key`.
+
+- `GET /api/bot/outbox` – vrátí `{ items: [{ id, discordId, kind, title, body, url }] }`. Volej např. jednou za minutu.
+  Zároveň vygeneruje připomínky tipů, které začínají do 20 minut.
+- `POST /api/bot/outbox` `{ "ids": ["..."] }` – po odeslání DM potvrď.
+- `POST /api/bot/join` `{ "discordId": "...", "type": "custom|lfg|tournament", "id": "..." }` – přidá hráče z Discordu
+  (např. tlačítko u zprávy z webhooku). Vrací `{ ok: true }` nebo `{ ok: false, reason }`.
+
+Bez bota funguje `DISCORD_WEBHOOK_URL`: nové turnaje, customky, LFG a novinky se samy pošlou do kanálu.
+Hráč si DM vypne na stránce Účet.

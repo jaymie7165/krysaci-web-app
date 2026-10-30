@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
+import { webhook } from "@/lib/notify";
 
 async function admin() {
   const s = await auth();
@@ -50,6 +51,7 @@ export async function createNews(fd: FormData) {
   if (title.length < 3 || body.length < 3) return;
   const n = await db.news.create({ data: { title, body, authorId: a.id, pinned: fd.get("pinned") === "on" } });
   await audit(a, "news.create", n.id, title);
+  await webhook(`Novinka: ${title}`, body.slice(0, 300), "/news");
   revalidatePath("/admin");
   revalidatePath("/news");
   revalidatePath("/");

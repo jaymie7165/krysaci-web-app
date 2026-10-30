@@ -2,6 +2,7 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { getT, pick } from "@/lib/i18n";
 import { getLiveNow } from "@/lib/presence";
+import { getTwitchLive } from "@/lib/twitch";
 
 export const metadata = { title: "Co se děje teď" };
 
@@ -20,6 +21,8 @@ export default async function NowPage() {
     db.custom.findMany({ where: { status: { in: ["UPCOMING", "LIVE"] }, startsAt: { lte: soon } }, orderBy: { startsAt: "asc" }, take: 6, include: { game: true } }),
     db.lfgPost.findMany({ where: { open: true }, orderBy: { createdAt: "desc" }, take: 6, include: { game: true, author: true } }),
   ]);
+  const streamers = await db.user.findMany({ where: { twitchLogin: { not: null } }, select: { handle: true, username: true, twitchLogin: true }, take: 40 });
+  const streams = (await Promise.all(streamers.map(async (s) => ({ s, t: await getTwitchLive(s.twitchLogin) })))).filter((x) => x.t);
   const byGame = new Map<string, typeof live>();
   for (const e of live) byGame.set(e.game, [...(byGame.get(e.game) ?? []), e]);
   const Box = ({ title, children, empty }: { title: string; children: React.ReactNode[]; empty: string }) => (
@@ -42,6 +45,13 @@ export default async function NowPage() {
             </li>
           ))}
         </Box>
+        {streams.length > 0 && (
+          <Box title={L("Na Twitchi živě", "Na Twitchi naživo", "Live on Twitch")} empty="">
+            {streams.map(({ s, t }) => (
+              <li key={s.handle}><a href={t!.url} target="_blank" rel="noopener noreferrer" className="hover:text-violet-300"><span className="text-ember">●</span> {s.username} · {t!.game} <span className="text-slate-500">· {t!.viewers}</span></a></li>
+            ))}
+          </Box>
+        )}
         <Box title={L("Esport živě", "Esport naživo", "Esports live")} empty={L("Žádný zápas zrovna neběží.", "Žiadny zápas práve nebeží.", "No match is live.")}>
           {liveMatches.map((m) => (
             <li key={m.id}><Link href="/esports" className="hover:text-violet-300"><span className="text-ember">●</span> {m.teamA} {m.scoreA ?? 0}:{m.scoreB ?? 0} {m.teamB} <span className="text-slate-500">· {m.league}</span></Link></li>

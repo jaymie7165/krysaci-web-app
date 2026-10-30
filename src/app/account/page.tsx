@@ -5,7 +5,7 @@ import { getT, pick } from "@/lib/i18n";
 import { DEFAULT_PLATFORM, PLATFORMS, profileIconUrl } from "@/lib/riot";
 import ThemePicker from "@/components/ThemePicker";
 import { getTheme } from "@/lib/theme";
-import { deleteAccount, checkRiotVerify, linkRiot, setShowActivity, setValorantShare, startRiotVerify, unlinkAccount } from "./actions";
+import { saveNotifySettings, deleteAccount, checkRiotVerify, linkRiot, setShowActivity, setValorantShare, startRiotVerify, unlinkAccount } from "./actions";
 
 export const metadata = { title: "Propojené účty" };
 
@@ -36,7 +36,7 @@ export default async function AccountPage({
   }
 
   const accounts = await db.linkedAccount.findMany({ where: { userId: session.user.id } });
-  const me = await db.user.findUnique({ where: { id: session.user.id }, select: { showActivity: true } });
+  const me = await db.user.findUnique({ where: { id: session.user.id }, select: { showActivity: true, notifyDiscord: true, twitchLogin: true } });
   const steam = accounts.find((a) => a.provider === "steam");
   const riot = accounts.find((a) => a.provider === "riot");
 
@@ -55,6 +55,7 @@ export default async function AccountPage({
     riot_failed: pick(locale, "Riot teď neodpovídá. Zkus to za chvíli.", "Riot teraz neodpovedá. Skús to o chvíľu.", "Riot isn't responding. Try again shortly."),
   };
   const oks: Record<string, string> = {
+    notify_saved: pick(locale, "Uloženo.", "Uložené.", "Saved."),
     steam: pick(locale, "Steam je propojený.", "Steam je prepojený.", "Steam linked."),
     riot: pick(locale, "Riot účet je propojený.", "Riot účet je prepojený.", "Riot account linked."),
     verified: pick(locale, "Riot účet je ověřený.", "Riot účet je overený.", "Riot account verified."),
@@ -268,6 +269,21 @@ export default async function AccountPage({
           </form>
         )}
       </section>
+      <section className="card space-y-3 p-5">
+        <h2 className="text-lg font-semibold">{pick(locale, "Oznámení a Twitch", "Oznámenia a Twitch", "Notifications & Twitch")}</h2>
+        <form action={saveNotifySettings} className="space-y-3">
+          <label className="flex items-start gap-3 text-sm text-slate-300">
+            <input type="checkbox" name="notifyDiscord" defaultChecked={me?.notifyDiscord ?? true} className="mt-1 h-4 w-4 accent-violet-500" />
+            <span>{pick(locale, "Posílat oznámení i do Discord zpráv (turnaje, žádosti o přátelství, tvoje tipy). Na webu je uvidíš vždy.", "Posielať oznámenia aj do Discord správ (turnaje, žiadosti o priateľstvo, tvoje tipy). Na webe ich uvidíš vždy.", "Also send notifications as Discord DMs (tournaments, friend requests, your picks). You always see them on the site.")}</span>
+          </label>
+          <div>
+            <label className="label">Twitch</label>
+            <input name="twitch" defaultValue={me?.twitchLogin ?? ""} placeholder={pick(locale, "tvoje jméno na Twitchi (volitelné)", "tvoje meno na Twitchi (voliteľné)", "your Twitch name (optional)")} className="input max-w-sm" />
+          </div>
+          <button className="btn">{pick(locale, "Uložit", "Uložiť", "Save")}</button>
+        </form>
+      </section>
+
       <section className="card space-y-3 p-5">
         <h2 className="text-lg font-semibold">{pick(locale, "Vzhled webu", "Vzhľad webu", "Appearance")}</h2>
         <p className="text-sm text-slate-400">{pick(locale, "Vyber si barvu. Uloží se k tvému účtu, takže stejná bude i v aplikaci pro počítač.", "Vyber si farbu. Uloží sa k tvojmu účtu, takže rovnaká bude aj v aplikácii pre počítač.", "Pick a colour. It is saved to your account, so the desktop app uses it too.")}</p>
