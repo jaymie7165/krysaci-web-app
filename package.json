@@ -8,7 +8,8 @@
     "start": "prisma db push --skip-generate && node prisma/seed.mjs && next start",
     "db:seed": "node prisma/seed.mjs",
     "db:migrate": "prisma migrate dev",
-    "import:bot": "node scripts/import-bot-json.mjs"
+    "import:bot": "node scripts/import-bot-json.mjs",
+    "sync-pet": "tsc src/lib/petSvg.ts --outDir desktop/src --module commonjs --target es2019 --skipLibCheck"
   },
   "dependencies": {
     "@prisma/client": "^6.0.0",

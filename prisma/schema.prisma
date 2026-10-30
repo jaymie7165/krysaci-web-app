@@ -73,6 +73,7 @@ model User {
   teamMemberships   TeamMember[]
   badges            Badge[]
   notifications     Notification[]
+  pet               Pet?
 }
 
 model Game {
@@ -472,4 +473,44 @@ model Notification {
 
   @@index([userId, readAt, createdAt])
   @@index([sentAt])
+}
+
+/// Pet hráče. Roste s odehranými hrami, nekrmený chátrá (vzhled se vrací o stupně zpět, XP se neztrácí).
+model Pet {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  species     String // frog | cat | dog | dragon
+  name        String
+  xp          Int      @default(0)
+  coins       Int      @default(0)
+  treats      Int      @default(3)
+  lastFedAt   DateTime @default(now())
+  adoptedAt   DateTime @default(now())
+  hat         String?
+  bg          String?
+  tint        String?
+  lastSyncAt  DateTime?
+  socialDay   String   @default("")
+  socialCount Int      @default(0)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/// Zápas, za který už hráč dostal odměnu (brání dvojímu započtení).
+model PetGame {
+  id        String   @id @default(cuid())
+  userId    String
+  matchId   String
+  counted   Boolean  @default(true)
+  social    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, matchId])
+}
+
+model PetItem {
+  id     String @id @default(cuid())
+  userId String
+  key    String
+
+  @@unique([userId, key])
 }

@@ -28,6 +28,12 @@ const MSG: Record<string, { ok: boolean; t: [string, string, string] }> = {
   badurl: { ok: false, t: ["Logo musí být odkaz začínající https://.", "Logo musí byť odkaz začínajúci https://.", "Logo must be an https:// link."] },
   left: { ok: true, t: ["Hotovo.", "Hotovo.", "Done."] },
   toomany: { ok: false, t: ["Tým má víc členů, než turnaj dovoluje.", "Tím má viac členov, než turnaj dovoľuje.", "The team has more members than the tournament allows."] },
+  petname: { ok: false, t: ["Vyber druh a dej petovi jméno (aspoň 2 znaky).", "Vyber druh a daj petovi meno (aspoň 2 znaky).", "Pick a species and give your pet a name (2+ characters)."] },
+  adopted: { ok: true, t: ["Pet je tvůj. Hraj, ať roste.", "Pet je tvoj. Hraj, nech rastie.", "It's yours. Play to make it grow."] },
+  fed: { ok: true, t: ["Nakrmeno.", "Nakŕmené.", "Fed."] },
+  notreats: { ok: false, t: ["Nemáš žádný pamlsek. Odehraj hru.", "Nemáš žiadnu maškrtu. Odohraj hru.", "No treats left. Play a game."] },
+  nocoins: { ok: false, t: ["Nemáš dost mincí.", "Nemáš dosť mincí.", "Not enough coins."] },
+  bought: { ok: true, t: ["Koupeno, nasaď si to ve skříni.", "Kúpené, nasaď si to v skrini.", "Bought, equip it in the wardrobe."] },
   added: { ok: true, t: ["Hráč přidán.", "Hráč pridaný.", "Player added."] },
 };
 

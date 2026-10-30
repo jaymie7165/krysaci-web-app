@@ -1,0 +1,22 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Play Haven</title><style>
+html,body{margin:0;height:100%;background:#0c070e;color:#ece9f8;font-family:Segoe UI,system-ui,sans-serif}
+body{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px}
+.pet{animation:hop 1s ease-in-out infinite;transform-origin:50% 100%}
+@keyframes hop{0%,100%{transform:translateY(0) scale(1,1)}30%{transform:translateY(-22px) scale(.96,1.06)}55%{transform:translateY(0) scale(1.07,.93)}}
+.eye{animation:blink 3.4s infinite;transform-box:fill-box;transform-origin:center}
+@keyframes blink{0%,92%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}
+.shadow{animation:sh 1s ease-in-out infinite;transform-origin:center}
+@keyframes sh{0%,100%{transform:scaleX(1);opacity:.35}30%{transform:scaleX(.7);opacity:.2}}
+.bar{width:180px;height:4px;background:#2a1f33;border-radius:4px;overflow:hidden}
+.bar i{display:block;height:100%;width:40%;background:#d9467f;border-radius:4px;animation:slide 1.3s ease-in-out infinite}
+@keyframes slide{0%{margin-left:-40%}100%{margin-left:100%}}
+p{margin:0;color:#9b8fb0;font-size:13px;letter-spacing:.04em}
+</style></head><body>
+<svg width="140" height="130" viewBox="0 0 200 200"><ellipse class="shadow" cx="100" cy="182" rx="46" ry="8" fill="#000"/>
+<g class="pet"><ellipse cx="100" cy="144" rx="40" ry="32" fill="#5fcf6a"/><ellipse cx="100" cy="150" rx="22" ry="22" fill="#c9f5a8"/>
+<ellipse cx="76" cy="174" rx="14" ry="8" fill="#2f8f45"/><ellipse cx="124" cy="174" rx="14" ry="8" fill="#2f8f45"/>
+<circle cx="78" cy="62" r="14" fill="#5fcf6a"/><circle cx="122" cy="62" r="14" fill="#5fcf6a"/><circle cx="100" cy="92" r="38" fill="#5fcf6a"/>
+<g class="eye"><circle cx="78" cy="62" r="8" fill="#fff"/><circle cx="80" cy="62" r="4" fill="#2a1b3a"/><circle cx="122" cy="62" r="8" fill="#fff"/><circle cx="124" cy="62" r="4" fill="#2a1b3a"/></g>
+<circle cx="76" cy="100" r="6" fill="#ff8aa0" opacity=".5"/><circle cx="124" cy="100" r="6" fill="#ff8aa0" opacity=".5"/>
+<path d="M88 98q12 12 24 0" stroke="#2a1b3a" stroke-width="3" fill="none" stroke-linecap="round"/></g></svg>
+<div class="bar"><i></i></div><p>Načítám Play Haven…</p></body></html>

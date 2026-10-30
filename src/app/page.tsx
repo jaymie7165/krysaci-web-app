@@ -10,6 +10,8 @@ import GameImage from "@/components/GameImage";
 import LolSearch from "@/components/LolSearch";
 import RankTag from "@/components/RankTag";
 import Onboarding from "@/components/Onboarding";
+import PetSprite from "@/components/PetSprite";
+import { condition, levelFromXp, shownStage, STAGE_NAMES, type Species } from "@/lib/pet";
 
 const tag = (l: Locale) => (l === "cs" ? "cs-CZ" : l === "sk" ? "sk-SK" : "en-GB");
 
@@ -125,6 +127,7 @@ export default async function Home() {
     }).length;
   };
 
+  const pet = user ? await db.pet.findUnique({ where: { userId: user.id } }).catch(() => null) : null;
   const topGames = [...games].sort((a, b) => liveFor(b.name) - liveFor(a.name)).slice(0, 6);
   const Head = ({ title, href, more }: { title: string; href?: string; more?: string }) => (
     <div className="mb-3 flex items-center justify-between gap-3">
@@ -348,6 +351,30 @@ export default async function Home() {
               {riot ? pick(locale, "Moje LoL statistiky", "Moje LoL štatistiky", "My LoL stats") : pick(locale, "Propojit herní účty", "Prepojiť herné účty", "Link game accounts")}
             </Link>
           </section>
+        )}
+
+        {user && (
+          <Link href="/pet" className="card flex items-center gap-3 p-4 transition hover:border-accent">
+            {pet ? (() => {
+              const c = condition(pet.lastFedAt);
+              const lv = levelFromXp(pet.xp);
+              const st = shownStage(lv, c.penalty);
+              return (
+                <>
+                  <PetSprite species={pet.species as Species} stage={st} mood={c.mood} penalty={c.penalty} hat={pet.hat} tint={pet.tint} size={96} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-bold text-white">{pet.name}</span>
+                    <span className="block text-xs text-slate-400">{STAGE_NAMES[pet.species as Species][st][locale === "cs" ? 0 : locale === "sk" ? 1 : 2]} · {pick(locale, "úroveň", "úroveň", "level")} {lv}</span>
+                    <span className={`mt-1 block text-xs font-semibold ${c.penalty > 0 || c.mood === "hungry" ? "text-ember" : "text-pulse"}`}>
+                      {c.mood === "hungry" || c.penalty > 0 ? pick(locale, "Má hlad, nakrm ho", "Je hladný, nakŕm ho", "Hungry, feed it") : pick(locale, "Je v pohodě", "Je v pohode", "Doing fine")} · 🍖 {pet.treats}
+                    </span>
+                  </span>
+                </>
+              );
+            })() : (
+              <span className="text-sm text-slate-300"><span className="block font-bold text-white">{pick(locale, "Vyber si peta", "Vyber si peta", "Pick a pet")}</span>{pick(locale, "Roste, když hraješ.", "Rastie, keď hráš.", "Grows when you play.")}</span>
+            )}
+          </Link>
         )}
 
         <section className="card p-4">

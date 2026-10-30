@@ -17,6 +17,7 @@ export default async function Sidebar() {
         { href: "/players", label: t("nav_players"), icon: "users" },
         { href: "/customs", label: t("nav_customs"), icon: "game" },
         ...(user ? [{ href: "/friends", label: t("nav_friends"), icon: "users" }] : []),
+        ...(user ? [{ href: "/pet", label: "Pet", icon: "star" }] : []),
         { href: "/teams", label: L("Týmy", "Tímy", "Teams"), icon: "shield" },
       ],
     },

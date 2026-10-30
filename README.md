@@ -143,3 +143,11 @@ Hráč je vidí pod zvonečkem a bot je může poslat do Discord DM. Všechny en
 
 Bez bota funguje `DISCORD_WEBHOOK_URL`: nové turnaje, customky, LFG a novinky se samy pošlou do kanálu.
 Hráč si DM vypne na stránce Účet.
+
+## Pet
+
+Každý přihlášený hráč si vybere peta (`/pet`). Za odehrané hry z **ověřeného** Riot účtu dostává pamlsky, XP a mince
+(hra s přítelem nebo spoluhráčem z LFG/customky/turnaje dává dvojnásobek XP a mincí, 5× denně). Hry se ověřují přes Riot
+Match-v5 (`RIOT_API_KEY`), nejvýš jednou za 5 minut při otevření stránky `/pet`. Nekrmený pet postupně vypadá hůř
+(po 16 h o stupeň, po 48 h spí), XP se neztrácí. Aplikace pro počítač má animovaný loading a v liště „Pet na ploše“
+(malé okno `/pet/widget`). Pravidla a čísla jsou v `src/lib/pet.ts`.

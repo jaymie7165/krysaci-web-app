@@ -17,6 +17,7 @@ const SITE_ORIGIN = new URL(SITE).origin;
 const ALLOWED = [SITE_ORIGIN, "https://discord.com", "https://discordapp.com", "https://steamcommunity.com"];
 const allowed = (u) => { try { return ALLOWED.includes(new URL(u).origin); } catch { return false; } };
 
+let petWin = null;
 let win = null;
 let tray = null;
 let quitting = false;
@@ -60,7 +61,7 @@ function createWindow() {
   const ua = win.webContents.userAgent.replace(/ Electron\/\S+/, "").replace(/ play-haven-desktop\/\S+/, "");
   win.webContents.setUserAgent(`${ua} PlayHavenApp/${app.getVersion()}`);
 
-  const start = () => win.loadURL(`${SITE}/live`).catch(() => null); // chybu řeší did-fail-load
+  const start = () => win.loadFile(path.join(__dirname, "splash.html")).then(() => win.loadURL(`${SITE}/live`)).catch(() => null); // nejdřív animovaný loading // chybu řeší did-fail-load
   win.webContents.on("did-fail-load", (_e, code, _d, url, isMain) => {
     if (!isMain || code === -3) return;
     win.loadFile(path.join(__dirname, "offline.html"), { query: { u: `${SITE}/live` } });
@@ -84,6 +85,21 @@ function createWindow() {
   start();
 }
 
+/** Malé okno peta na ploše: vždy nahoře, bez rámečku, načítá se z webu (změny peta se projeví hned). */
+function togglePet() {
+  if (petWin && !petWin.isDestroyed()) { petWin.close(); petWin = null; return; }
+  petWin = new BrowserWindow({
+    width: 280, height: 360, frame: false, resizable: false, alwaysOnTop: true, skipTaskbar: true,
+    backgroundColor: readConfig().bg || "#0c070e", title: "Pet",
+    webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true },
+  });
+  const ua = petWin.webContents.userAgent.replace(/ Electron\/\S+/, "").replace(/ play-haven-desktop\/\S+/, "");
+  petWin.webContents.setUserAgent(`${ua} PlayHavenApp/${app.getVersion()}`);
+  petWin.setAlwaysOnTop(true, "screen-saver");
+  petWin.loadURL(`${SITE}/pet/widget`).catch(() => null);
+  petWin.on("closed", () => { petWin = null; });
+}
+
 function buildTray() {
   const icon = nativeImage.createFromPath(path.join(__dirname, "..", "assets", "tray.png"));
   tray = new Tray(icon);
@@ -92,6 +108,7 @@ function buildTray() {
     tray.setContextMenu(
       Menu.buildFromTemplate([
         { label: "Otevřít Play Haven", click: showWindow },
+        { label: "Pet na ploše", click: togglePet },
         { type: "separator" },
         {
           label: "Okno vždy nad ostatními", type: "checkbox", checked: !!win && win.isAlwaysOnTop(),

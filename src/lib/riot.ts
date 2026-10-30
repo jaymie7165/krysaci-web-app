@@ -577,3 +577,32 @@ export function buildFromMatches(matches: LolMatch[], champion: string) {
     items: top(games.flatMap((g) => g.me.items.slice(0, 6)).filter(Boolean), 6),
   };
 }
+
+/** Poslední zápasy hráče v kompaktní podobě (pro odměny v petovi). Jedno volání na seznam + jedno na každý zápas. */
+export type MatchBrief = { id: string; endedAt: number; durationSec: number; remake: boolean; puuids: string[]; mine: boolean };
+
+export async function getMatchBriefs(puuid: string, platform: string, known: Set<string>, max = 6): Promise<MatchBrief[]> {
+  const region = PLATFORMS[platform]?.region ?? "europe";
+  const ids = await riot<string[]>(region, `/lol/match/v5/matches/by-puuid/${puuid}/ids?start=0&count=10`);
+  const out: MatchBrief[] = [];
+  for (const id of ids.filter((i) => !known.has(i)).slice(0, max)) {
+    try {
+      const m = await riot<{
+        info: { gameEndTimestamp?: number; gameStartTimestamp: number; gameDuration: number; participants: { puuid: string; gameEndedInEarlySurrender?: boolean }[] };
+      }>(region, `/lol/match/v5/matches/${id}`);
+      const me = m.info.participants.find((p) => p.puuid === puuid);
+      const dur = m.info.gameDuration > 100000 ? Math.round(m.info.gameDuration / 1000) : m.info.gameDuration;
+      out.push({
+        id,
+        endedAt: m.info.gameEndTimestamp ?? m.info.gameStartTimestamp + dur * 1000,
+        durationSec: dur,
+        remake: !!me?.gameEndedInEarlySurrender || dur < 300,
+        puuids: m.info.participants.map((p) => p.puuid),
+        mine: !!me,
+      });
+    } catch {
+      /* zápas se zkusí příště */
+    }
+  }
+  return out;
+}

@@ -30,6 +30,21 @@ export async function GET(req: Request) {
     });
   }
 
+  // Pet má hlad: po 14 hodinách bez pamlsku (a než usne), jednou za každé nakrmení.
+  const hungry = await db.pet.findMany({
+    where: { lastFedAt: { lt: new Date(Date.now() - 14 * 3600 * 1000), gt: new Date(Date.now() - 48 * 3600 * 1000) } },
+    select: { userId: true, name: true, lastFedAt: true, treats: true },
+    take: 500,
+  });
+  for (const p of hungry) {
+    await notify(p.userId, {
+      kind: "pet",
+      title: `${p.name} má hlad${p.treats > 0 ? ", nakrm ho" : ", odehraj hru pro pamlsky"}`,
+      url: "/pet",
+      dedupeKey: `pethungry:${p.lastFedAt.getTime()}`,
+    });
+  }
+
   const rows = await db.notification.findMany({
     where: { sentAt: null, user: { notifyDiscord: true } },
     orderBy: { createdAt: "asc" },
