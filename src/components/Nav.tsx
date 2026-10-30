@@ -25,6 +25,8 @@ export default async function Nav() {
     ["/lfg", t("nav_lfg")],
     ["/customs", t("nav_customs")],
   ];
+  community.push(["/now", pick(locale, "Co se děje teď", "Čo sa deje teraz", "What's happening")]);
+  community.push(["/news", pick(locale, "Novinky", "Novinky", "News")]);
   if (user) community.push(["/friends", t("nav_friends")]);
 
   const items: NavItem[] = [
@@ -77,6 +79,7 @@ export default async function Nav() {
         <Link href={`/players/${user.handle}`} className="menu-item">{t("nav_profile")}</Link>
         <Link href="/account" className="menu-item">{pick(locale, "Propojené účty", "Prepojené účty", "Linked accounts")}</Link>
         <Link href="/tickets" className="menu-item">{t("nav_tickets")}</Link>
+        {user.role === "ADMIN" && <Link href="/admin" className="menu-item">Admin</Link>}
         <form
           action={async () => {
             "use server";
@@ -100,6 +103,15 @@ export default async function Nav() {
 
   return (
     <TopNav items={items} logo={<Logo />}>
+      <form action="/search" className="hidden md:block">
+        <input
+          name="q"
+          type="search"
+          aria-label={pick(locale, "Hledat", "Hľadať", "Search")}
+          placeholder={pick(locale, "Hledat…", "Hľadať…", "Search…")}
+          className="input h-9 w-36 py-1 text-sm lg:w-44"
+        />
+      </form>
       {langs}
       {account}
     </TopNav>

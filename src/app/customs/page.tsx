@@ -24,6 +24,11 @@ export default async function CustomsPage({ searchParams }: { searchParams: Prom
   return (
     <div className="space-y-8">
       <h1 className="text-4xl font-bold">{t("customs")}</h1>
+      <p className="text-sm text-slate-400">
+        <a href="/api/calendar" className="text-violet-300 hover:underline">{pick(locale, "Přidat do kalendáře (.ics)", "Pridať do kalendára (.ics)", "Add to calendar (.ics)")}</a>
+        {" · "}
+        <a href="/api/calendar?mine=1" className="text-violet-300 hover:underline">{pick(locale, "jen moje", "len moje", "only mine")}</a>
+      </p>
       <Notice msg={msg} locale={locale} />
 
       {session?.user ? (

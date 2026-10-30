@@ -44,6 +44,9 @@ model User {
   createdAt    DateTime @default(now())
   lastSeenAt   DateTime @default(now())
   showActivity Boolean  @default(true) // zda web ukazuje, jakou hru hráč právě hraje
+  bannedAt     DateTime? // zablokovaný hráč se přihlásí, ale nemůže nic dělat
+  banReason    String?
+  onboardingDismissed Boolean @default(false)
 
   gameProfiles      GameProfile[]
   stats             PlayerStat[]
@@ -62,6 +65,7 @@ model User {
   linkedAccounts    LinkedAccount[]
   captainOf         TournamentTeam[]  @relation("TeamCaptain")
   picks             Pick[]
+  news              News[]
 }
 
 model Game {
@@ -162,7 +166,7 @@ model Tournament {
   teamSize    Int               @default(1) // 1 = hraje se solo, víc = týmy
   createdAt   DateTime          @default(now())
   game        Game              @relation(fields: [gameId], references: [id], onDelete: Cascade)
-  organizer   User              @relation(fields: [organizerId], references: [id])
+  organizer   User              @relation(fields: [organizerId], references: [id], onDelete: Cascade)
   entries     TournamentEntry[]
   teams       TournamentTeam[]
 
@@ -207,7 +211,7 @@ model Custom {
   status      EventStatus   @default(UPCOMING)
   createdAt   DateTime      @default(now())
   game        Game          @relation(fields: [gameId], references: [id], onDelete: Cascade)
-  host        User          @relation(fields: [hostId], references: [id])
+  host        User          @relation(fields: [hostId], references: [id], onDelete: Cascade)
   entries     CustomEntry[]
 
   @@index([startsAt])
@@ -359,4 +363,30 @@ model Pick {
 
   @@unique([userId, matchId])
   @@index([matchId])
+}
+
+/// Novinky od adminů na hlavní stránce.
+model News {
+  id        String   @id @default(cuid())
+  authorId  String?
+  title     String
+  body      String
+  pinned    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  author    User?    @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([pinned, createdAt])
+}
+
+/// Záznam citlivých akcí (kdo co smazal, zablokoval, změnil).
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String? // bez vazby, aby záznam přežil smazání účtu
+  actorName String
+  action    String
+  target    String?
+  detail    String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
 }

@@ -8,11 +8,21 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { LOCALES } from "@/lib/i18n";
 import { pragueToDate } from "@/lib/time";
+import { allow } from "@/lib/rateLimit";
+import { audit } from "@/lib/audit";
 
 async function user() {
   const s = await auth();
   if (!s?.user?.id) redirect("/api/auth/signin");
+  // Zablokovaný hráč nemůže nic měnit.
+  const row = await db.user.findUnique({ where: { id: s.user.id }, select: { bannedAt: true } }).catch(() => null);
+  if (row?.bannedAt) redirect("/banned");
   return s.user;
+}
+
+/** Omezení počtu akcí na hráče. Při překročení se vrátí zpět se zprávou. */
+function throttle(userId: string, bucket: string, max: number, windowMs: number, path: string) {
+  if (!allow(`${bucket}:${userId}`, max, windowMs)) back(path, "ratelimit");
 }
 
 const str = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim();
@@ -102,6 +112,7 @@ export async function leaveGame(gameId: string) {
 /* ---------- LFG ---------- */
 export async function createLfg(fd: FormData) {
   const u = await user();
+  throttle(u.id, "lfg", 5, 600000, "/lfg");
   const parsed = z
     .object({
       gameId: z.string().min(1),
@@ -212,6 +223,7 @@ export async function joinTournament(id: string) {
 /** Přihlásí celý tým najednou. Kapitán zadá název a @handly spoluhráčů. */
 export async function createTeam(tournamentId: string, fd: FormData) {
   const u = await user();
+  throttle(u.id, "team", 5, 600000, "/tournaments");
   const t = await db.tournament.findUnique({ where: { id: tournamentId }, include: { entries: true } });
   if (!t || t.status !== "UPCOMING") back("/tournaments", "closed");
   if (t.teamSize < 2) back("/tournaments", "solo");
@@ -319,6 +331,7 @@ export async function cancelTournament(id: string) {
 /* ---------- Customky ---------- */
 export async function createCustom(fd: FormData) {
   const u = await user();
+  throttle(u.id, "custom", 5, 600000, "/customs");
   const parsed = z
     .object({
       gameId: z.string().min(1),
@@ -407,6 +420,7 @@ export async function sendFriendRequest(targetId: string) {
 /** Přidání přítele podle jména nebo @handlu z formuláře na stránce Přátelé. */
 export async function sendFriendRequestByHandle(fd: FormData) {
   const u = await user();
+  throttle(u.id, "friend", 20, 600000, "/friends");
   const p = await findPlayer(str(fd, "handle"));
   if (!p) back("/friends", "notfound");
   if (p.id === u.id) back("/friends", "self");
@@ -444,6 +458,7 @@ export async function removeFriend(id: string) {
 /* ---------- Tickety ---------- */
 export async function createTicket(fd: FormData) {
   const u = await user();
+  throttle(u.id, "ticket", 5, 3600000, "/tickets");
   const parsed = z
     .object({
       subject: z.string().min(3).max(100),
@@ -521,7 +536,9 @@ export async function toggleVote(suggestionId: string) {
 export async function deleteTournament(id: string) {
   const u = await user();
   if (u.role !== "ADMIN") return;
+  const t = await db.tournament.findUnique({ where: { id }, select: { name: true } });
   await db.tournament.delete({ where: { id } }).catch(() => null);
+  await audit(u, "tournament.delete", id, t?.name);
   revalidatePath("/tournaments");
 }
 
@@ -529,5 +546,12 @@ export async function deleteSuggestion(id: string) {
   const u = await user();
   if (u.role !== "ADMIN") return;
   await db.gameSuggestion.delete({ where: { id } }).catch(() => null);
+  await audit(u, "suggestion.delete", id);
   revalidatePath("/vote");
+}
+
+export async function dismissOnboarding() {
+  const u = await user();
+  await db.user.update({ where: { id: u.id }, data: { onboardingDismissed: true } });
+  revalidatePath("/");
 }

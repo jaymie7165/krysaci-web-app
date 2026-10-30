@@ -3,7 +3,7 @@ import { auth, signIn } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getT, pick } from "@/lib/i18n";
 import { DEFAULT_PLATFORM, PLATFORMS, profileIconUrl } from "@/lib/riot";
-import { checkRiotVerify, linkRiot, setShowActivity, setValorantShare, startRiotVerify, unlinkAccount } from "./actions";
+import { deleteAccount, checkRiotVerify, linkRiot, setShowActivity, setValorantShare, startRiotVerify, unlinkAccount } from "./actions";
 
 export const metadata = { title: "Propojené účty" };
 
@@ -265,6 +265,18 @@ export default async function AccountPage({
             </label>
           </form>
         )}
+      </section>
+      <section className="card space-y-4 p-5">
+        <h2 className="text-lg font-semibold">{pick(locale, "Moje data", "Moje dáta", "My data")}</h2>
+        <p className="text-sm text-slate-400">
+          {pick(locale, "Stáhni si všechno, co o tobě web ukládá, nebo účet trvale smaž.", "Stiahni si všetko, čo o tebe web ukladá, alebo účet trvalo zmaž.", "Download everything the site stores about you, or delete your account permanently.")}
+        </p>
+        <a href="/api/account/export" className="btn-ghost inline-block">{pick(locale, "Stáhnout moje data (JSON)", "Stiahnuť moje dáta (JSON)", "Download my data (JSON)")}</a>
+        <form action={deleteAccount} className="flex flex-col gap-2 border-t border-ink-600/50 pt-4 sm:flex-row">
+          <input name="confirm" required autoComplete="off" aria-label="handle" placeholder={pick(locale, "Pro smazání opiš svůj @handle", "Na zmazanie opíš svoj @handle", "Type your @handle to delete")} className="input flex-1" />
+          <button className="btn border-ember/50 text-ember">{pick(locale, "Smazat účet", "Zmazať účet", "Delete account")}</button>
+        </form>
+        {error === "delete_confirm" && <p className="text-sm text-ember">{pick(locale, "Handle nesouhlasí, účet nebyl smazán.", "Handle nesúhlasí, účet nebol zmazaný.", "Handle doesn't match, account not deleted.")}</p>}
       </section>
     </div>
   );

@@ -9,6 +9,8 @@ import { db } from "@/lib/db";
 export async function savePick(matchId: string, fd: FormData) {
   const s = await auth();
   if (!s?.user?.id) redirect("/api/auth/signin");
+  const b = await db.user.findUnique({ where: { id: s.user.id }, select: { bannedAt: true } });
+  if (b?.bannedAt) redirect("/banned");
   const m = await db.esportsMatch.findUnique({ where: { id: matchId } });
   if (!m || m.status !== "upcoming" || m.startsAt.getTime() <= Date.now()) redirect("/pickems?msg=locked");
 

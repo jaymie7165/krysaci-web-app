@@ -18,6 +18,7 @@ const MSG: Record<string, { ok: boolean; t: [string, string, string] }> = {
   teamfull: { ok: false, t: ["Tým je plný.", "Tím je plný.", "The team is full."] },
   teamok: { ok: true, t: ["Tým je přihlášený.", "Tím je prihlásený.", "Team registered."] },
   locked: { ok: false, t: ["Zápas už začal nebo skončil, tip nejde změnit.", "Zápas už začal alebo skončil, tip nejde zmeniť.", "The match has started or finished, picks are locked."] },
+  ratelimit: { ok: false, t: ["Zpomal, děláš to moc rychle. Zkus to za pár minut.", "Spomaľ, robíš to príliš rýchlo. Skús to o pár minút.", "Slow down, you are doing that too fast. Try again in a few minutes."] },
   added: { ok: true, t: ["Hráč přidán.", "Hráč pridaný.", "Player added."] },
 };
 

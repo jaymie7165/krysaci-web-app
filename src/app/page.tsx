@@ -9,6 +9,8 @@ import { getLiveNow, normGame, type LiveEntry } from "@/lib/presence";
 import GameImage from "@/components/GameImage";
 import LolSearch from "@/components/LolSearch";
 import RankTag from "@/components/RankTag";
+import Onboarding from "@/components/Onboarding";
+import NewsList from "@/components/NewsList";
 
 const tag = (l: Locale) => (l === "cs" ? "cs-CZ" : l === "sk" ? "sk-SK" : "en-GB");
 
@@ -54,7 +56,7 @@ export default async function Home() {
   const user = session?.user;
   const now = new Date();
 
-  const [tournaments, customs, lfg, games, accounts, live] = await Promise.all([
+  const [tournaments, customs, lfg, games, accounts, live, latestNews] = await Promise.all([
     db.tournament.findMany({
       where: { status: "UPCOMING", startsAt: { gte: now } },
       orderBy: { startsAt: "asc" },
@@ -76,6 +78,7 @@ export default async function Home() {
     db.game.findMany({ orderBy: { sortOrder: "asc" } }),
     user ? db.linkedAccount.findMany({ where: { userId: user.id } }) : Promise.resolve([]),
     getLiveNow().catch(() => [] as LiveEntry[]),
+    db.news.findMany({ orderBy: [{ pinned: "desc" }, { createdAt: "desc" }], take: 3 }).catch(() => []),
   ]);
 
   const steam = accounts.find((a) => a.provider === "steam");
@@ -133,6 +136,18 @@ export default async function Home() {
           {pick(locale, "hráčů právě hraje", "hráčov práve hrá", "players in game now")}
         </span>
       </div>
+
+      {user && <Onboarding userId={user.id} locale={locale} />}
+
+      {latestNews.length > 0 && (
+        <section className="space-y-2">
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold">{pick(locale, "Novinky", "Novinky", "News")}</h2>
+            <Link href="/news" className="text-sm text-violet-300 hover:underline">{pick(locale, "Všechny", "Všetky", "All")}</Link>
+          </div>
+          <NewsList items={latestNews} locale={locale} />
+        </section>
+      )}
 
       {/* Hero: nejbližší akce */}
       <section className="panel panel-edge relative isolate min-h-[300px] overflow-hidden">

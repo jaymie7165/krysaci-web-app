@@ -18,6 +18,8 @@ import {
 async function me() {
   const s = await auth();
   if (!s?.user?.id) redirect("/api/auth/signin");
+  const b = await db.user.findUnique({ where: { id: s.user.id }, select: { bannedAt: true } }).catch(() => null);
+  if (b?.bannedAt) redirect("/banned");
   return s.user;
 }
 
@@ -153,4 +155,14 @@ export async function setShowActivity(fd: FormData) {
   await db.user.update({ where: { id: u.id }, data: { showActivity: fd.get("showActivity") === "on" } });
   revalidatePath("/account");
   redirect("/account?ok=valorant");
+}
+
+/** Trvalé smazání účtu a všech jeho dat (GDPR). Vyžaduje opsání handlu. */
+export async function deleteAccount(fd: FormData) {
+  const u = await me();
+  const confirm = String(fd.get("confirm") ?? "").trim().replace(/^@/, "").toLowerCase();
+  const row = await db.user.findUnique({ where: { id: u.id }, select: { handle: true } });
+  if (!row || confirm !== row.handle.toLowerCase()) redirect("/account?error=delete_confirm");
+  await db.user.delete({ where: { id: u.id } });
+  redirect("/api/auth/signout");
 }
