@@ -71,16 +71,16 @@ export default async function Home() {
     db.lfgPost.findMany({
       where: { open: true },
       orderBy: { createdAt: "desc" },
-      take: 3,
+      take: 6,
       include: { game: true, author: true, _count: { select: { joins: true } } },
     }),
     db.game.findMany({ orderBy: { sortOrder: "asc" } }),
     user ? db.linkedAccount.findMany({ where: { userId: user.id } }) : Promise.resolve([]),
     getLiveNow().catch(() => [] as LiveEntry[]),
-    db.news.findMany({ orderBy: [{ pinned: "desc" }, { createdAt: "desc" }], take: 3 }).catch(() => []),
+    db.news.findMany({ orderBy: [{ pinned: "desc" }, { createdAt: "desc" }], take: 4 }).catch(() => []),
     db.user.count().catch(() => 0),
     db.lfgPost.count({ where: { open: true } }).catch(() => 0),
-    db.esportsMatch.findMany({ where: { OR: [{ status: "live" }, { status: "upcoming", startsAt: { gte: now } }] }, orderBy: { startsAt: "asc" }, take: 3 }).catch(() => []),
+    db.esportsMatch.findMany({ where: { OR: [{ status: "live" }, { status: "upcoming", startsAt: { gte: now } }] }, orderBy: { startsAt: "asc" }, take: 4 }).catch(() => []),
   ]);
 
   const steam = accounts.find((a) => a.provider === "steam");
@@ -140,22 +140,21 @@ export default async function Home() {
   );
 
   return (
-    <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_330px]">
+    <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_360px] 2xl:grid-cols-[minmax(0,1fr)_400px]">
       <div className="min-w-0 space-y-8">
         {user && <Onboarding userId={user.id} locale={locale} />}
 
         {/* Hero */}
-        <section className="hero-art relative overflow-hidden rounded-3xl border border-ink-600/50 p-7 md:p-10">
-          <p className="text-xs font-bold uppercase tracking-[0.3em] text-accent-soft">Play Haven</p>
-          <h1 className="mt-3 max-w-xl text-4xl font-extrabold leading-[1.02] md:text-6xl">
+        <section className="hero-art relative flex min-h-[420px] flex-col justify-center overflow-hidden rounded-3xl border border-ink-600/50 p-7 md:min-h-[480px] md:p-12 2xl:min-h-[540px]">
+          <h1 className="max-w-2xl text-4xl font-extrabold leading-[1.02] md:text-6xl 2xl:text-7xl">
             {pick(locale, "Hry jsou lepší", "Hry sú lepšie", "Games are better")}
             <span className="block text-accent">{pick(locale, "společně.", "spoločne.", "together.")}</span>
           </h1>
-          <p className="mt-4 max-w-md text-slate-200">
+          <p className="mt-4 max-w-lg text-lg text-slate-200">
             {user ? `${greeting}, ${firstName}. ` : ""}
             {pick(locale, "Najdi si spoluhráče, objev nové hry a buď součástí komunity, kde se hraje, baví a vznikají nové příběhy.", "Nájdi si spoluhráčov, objav nové hry a buď súčasťou komunity, kde sa hrá, baví a vznikajú nové príbehy.", "Find teammates, discover new games and join a community where people play, have fun and make stories.")}
           </p>
-          <form action="/search" className="mt-6 flex max-w-xl flex-col gap-2 rounded-2xl border border-ink-600/60 bg-ink-900/80 p-1.5 backdrop-blur sm:flex-row">
+          <form action="/search" className="mt-7 flex max-w-2xl flex-col gap-2 rounded-2xl border border-ink-600/60 bg-ink-900/80 p-1.5 backdrop-blur sm:flex-row">
             <input name="q" aria-label={pick(locale, "Hledat", "Hľadať", "Search")} placeholder={pick(locale, "Co si dnes zahraješ?", "Čo si dnes zahráš?", "What are you playing today?")} className="min-w-0 flex-1 bg-transparent px-4 py-2.5 text-sm text-white placeholder:text-slate-400 focus:outline-none" />
             <Link href="/lfg" className="btn">{pick(locale, "Najít spoluhráče", "Nájsť spoluhráčov", "Find teammates")} →</Link>
           </form>
@@ -195,7 +194,7 @@ export default async function Home() {
         {/* Oblíbené hry */}
         <section>
           <Head title={pick(locale, "Oblíbené hry v komunitě", "Obľúbené hry v komunite", "Popular games")} href="/games" more={pick(locale, "Zobrazit všechny hry", "Zobraziť všetky hry", "All games")} />
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             {topGames.map((g) => {
               const n = liveFor(g.name);
               return (
@@ -216,9 +215,12 @@ export default async function Home() {
         <section>
           <Head title={pick(locale, "LFG – Lidé hledají spoluhráče", "LFG – Ľudia hľadajú spoluhráčov", "LFG – players looking for teammates")} href="/lfg" more={pick(locale, "Zobrazit vše", "Zobraziť všetko", "View all")} />
           {lfg.length === 0 ? (
-            <p className="card p-5 text-sm text-slate-400">{t("noData")}</p>
+            <div className="card flex flex-wrap items-center justify-between gap-4 p-6">
+              <p className="text-slate-300">{pick(locale, "Zatím nikdo nehledá spoluhráče. Buď první a založ hledání.", "Zatiaľ nikto nehľadá spoluhráčov. Buď prvý a založ hľadanie.", "Nobody is looking yet. Be the first to post.")}</p>
+              <Link href="/lfg" className="btn">{pick(locale, "Založit LFG", "Založiť LFG", "Post LFG")}</Link>
+            </div>
           ) : (
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
               {lfg.map((p) => (
                 <article key={p.id} className="card flex flex-col gap-3 p-4">
                   <div className="flex items-center gap-3">
@@ -238,6 +240,32 @@ export default async function Home() {
           )}
         </section>
 
+        {/* Chystá se */}
+        <section>
+          <Head title={t("hub_happening")} href="/tournaments" more={pick(locale, "Turnaje a customky", "Turnaje a customky", "Tournaments & customs")} />
+          {events.length === 0 ? (
+            <div className="card flex flex-wrap items-center justify-between gap-4 p-6">
+              <p className="text-slate-300">{pick(locale, "Zatím není nic naplánováno. Založ customku nebo počkej na turnaj.", "Zatiaľ nie je nič naplánované. Založ customku alebo počkaj na turnaj.", "Nothing planned yet. Start a custom or wait for a tournament.")}</p>
+              <Link href="/customs" className="btn">{pick(locale, "Založit customku", "Založiť customku", "Create a custom")}</Link>
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
+              {events.map((e) => {
+                const sl = slot(locale, e.startsAt);
+                const free = Math.max(0, e.max - e.entries);
+                return (
+                  <Link key={e.key} href={e.href} className="card flex flex-col gap-2 p-4 transition hover:border-accent">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-accent-soft">{e.kind} · {e.game}</p>
+                    <p className="font-bold text-white">{e.title}</p>
+                    <p className="text-sm text-slate-400">{sl.day} {sl.date} · {sl.time} · {inText(locale, e.startsAt)}</p>
+                    <span className={`badge mt-auto w-fit ${free === 0 ? "text-ember" : ""}`}>{free === 0 ? t("full") : `${free} ${t("hub_free")}`}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
         {/* Právě hrají */}
         <section>
           <Head title={pick(locale, "Komunita právě teď", "Komunita práve teraz", "Community right now")} href="/now" more={pick(locale, "Více", "Viac", "More")} />
@@ -250,7 +278,7 @@ export default async function Home() {
               {pick(locale, "Zrovna nikdo nehraje. Aktivita se ukáže, jakmile někdo spustí hru.", "Práve nikto nehrá. Aktivita sa ukáže, hneď ako niekto spustí hru.", "Nobody is playing right now. Activity shows up as soon as someone launches a game.")}
             </div>
           ) : (
-            <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <ul className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-4">
               {live.slice(0, 8).map((e) => (
                 <li key={e.userId}>
                   <Link href={`/players/${e.handle}`} className="card flex items-center gap-3 p-3 transition hover:border-accent">
@@ -364,27 +392,6 @@ export default async function Home() {
             </ul>
           )}
         </section>
-
-        {events.length > 0 && (
-          <section className="card p-4">
-            <Head title={t("hub_happening")} />
-            <ul className="space-y-1">
-              {events.map((e) => {
-                const s = slot(locale, e.startsAt);
-                const free = Math.max(0, e.max - e.entries);
-                return (
-                  <li key={e.key}>
-                    <Link href={e.href} className="flex items-center gap-3 rounded-xl p-1.5 transition hover:bg-ink-700/60">
-                      <span className="w-12 shrink-0 text-center"><span className="block text-[11px] text-slate-400">{s.day} {s.date}</span><span className="num block text-sm text-accent-soft">{s.time}</span></span>
-                      <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-white">{e.title}</span><span className="block truncate text-xs text-slate-400">{e.kind}, {e.game}</span></span>
-                      <span className={`badge shrink-0 ${free === 0 ? "text-ember" : ""}`}>{free === 0 ? t("full") : `${free} ${t("hub_free")}`}</span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-        )}
 
         <section className="card p-4">
           <Head title={pick(locale, "Novinky", "Novinky", "News")} href="/news" more={pick(locale, "Zobrazit vše", "Zobraziť všetko", "View all")} />

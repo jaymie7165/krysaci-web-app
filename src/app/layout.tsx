@@ -34,12 +34,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <aside className="sticky top-16 hidden h-[calc(100vh-4rem)] overflow-y-auto border-r border-ink-600/40 px-4 py-4 lg:block">
             <Sidebar />
           </aside>
-          <main className="min-h-[75vh] min-w-0 px-4 py-6 lg:px-8 lg:py-8">
-            <div className="mx-auto max-w-6xl">{children}</div>
+          <main className="min-h-[75vh] min-w-0 px-4 py-6 lg:px-8 lg:py-8 2xl:px-12">
+            <div className="mx-auto max-w-[1760px]">{children}</div>
           </main>
         </div>
         <footer className="border-t border-ink-600/50">
-          <div className="mx-auto max-w-6xl space-y-2 px-4 py-8 text-xs leading-relaxed text-slate-500 lg:pl-[272px] lg:pr-8">
+          <div className="space-y-2 px-4 py-8 text-xs leading-relaxed text-slate-500 lg:pl-[272px] lg:pr-8 2xl:pr-12">
             <p>{t("footer")} · build 2026-10-30 v6</p>
             <p className="flex gap-4">
               <a href="/legal/terms" className="hover:text-slate-300">{locale === "en" ? "Terms" : "Podmínky"}</a>

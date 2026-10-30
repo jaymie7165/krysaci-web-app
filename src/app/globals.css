@@ -145,11 +145,11 @@ h1 { letter-spacing: -0.02em; }
   /* Hero: obloha s horami v barvě tématu. Vlastní obrázek stačí uložit jako public/hero.jpg. */
   .hero-art {
     background-image:
-      linear-gradient(90deg, rgb(var(--ink-950) / 0.95) 0%, rgb(var(--ink-950) / 0.55) 45%, rgb(var(--ink-950) / 0.1) 100%),
+      linear-gradient(90deg, rgb(var(--ink-950) / 0.88) 0%, rgb(var(--ink-950) / 0.45) 38%, transparent 70%),
       url("/hero.jpg"),
       url("/hero.svg");
     background-size: cover;
-    background-position: center right;
+    background-position: center;
   }
 }
 
