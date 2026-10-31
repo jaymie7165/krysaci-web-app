@@ -6,11 +6,11 @@ import { getT, pick } from "@/lib/i18n";
 import Notice from "@/components/Notice";
 import PetSprite from "@/components/PetSprite";
 import {
-  BG_CSS, GAME_REWARD, SHOP, SPECIES, SPECIES_LABEL, STAGE_LEVELS, STAGE_NAMES, SLEEP_HOURS,
-  condition, levelFromXp, shownStage, stageFromLevel, xpForLevel, type Species,
+  BG_CSS, BG_SHOP, GAME_REWARD, SHOP, SLOTS, SLOT_LABEL, SPECIES, SPECIES_LABEL, STAGE_LEVELS, STAGE_NAMES, SLEEP_HOURS,
+  asSpecies, condition, levelFromXp, parseGear, shownStage, stageFromLevel, xpForLevel,
 } from "@/lib/pet";
 import { syncPetGames } from "@/lib/petSync";
-import { adoptPet, buyItem, equipItem, feedPet } from "./actions";
+import { adoptPet, buyItem, equipBg, equipItem, feedPet } from "./actions";
 
 export const metadata = { title: "Pet" };
 
@@ -31,11 +31,11 @@ export default async function PetPage({ searchParams }: { searchParams: Promise<
         <p className="text-slate-300">{L("Pet roste, když hraješ. Za každou odehranou hru dostane pamlsky, XP a ty peníze na doplňky. Hry s lidmi z komunity dávají dvojnásobek. Když ho nekrmíš, jeho vzhled se zhoršuje.", "Pet rastie, keď hráš. Za každú odohranú hru dostane maškrty, XP a ty peniaze na doplnky. Hry s ľuďmi z komunity dávajú dvojnásobok. Keď ho nekŕmiš, jeho vzhľad sa zhoršuje.", "Your pet grows as you play. Every finished game gives treats, XP and coins for accessories. Games with community members give double. If you don't feed it, it gets worse-looking.")}</p>
         <Notice msg={msg} locale={locale} />
         <form action={adoptPet} className="space-y-5">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             {SPECIES.map((sp, i) => (
               <label key={sp} className="card cursor-pointer space-y-2 p-4 text-center has-[:checked]:border-accent has-[:checked]:bg-accent/10">
                 <input type="radio" name="species" value={sp} defaultChecked={i === 0} className="sr-only" />
-                <div className="mx-auto w-fit"><PetSprite species={sp} stage={sp === "dragon" ? 1 : 1} mood="ok" size={150} /></div>
+                <div className="mx-auto w-fit"><PetSprite species={sp} stage={sp === "dragon" ? 1 : 1} mood="ok" size={170} /></div>
                 <p className="font-bold text-white">{SPECIES_LABEL[sp][li]}</p>
                 <p className="text-xs text-slate-400">{STAGE_NAMES[sp][0][li]} → {STAGE_NAMES[sp][4][li]}</p>
               </label>
@@ -44,7 +44,7 @@ export default async function PetPage({ searchParams }: { searchParams: Promise<
           <div className="flex flex-wrap items-end gap-3">
             <div>
               <label className="label">{L("Jméno peta", "Meno peta", "Pet name")}</label>
-              <input name="name" required minLength={2} maxLength={20} className="input w-64" placeholder="Žbluňk" />
+              <input name="name" required minLength={2} maxLength={20} className="input w-64" placeholder="Ember" />
             </div>
             <button className="btn">{L("Adoptovat", "Adoptovať", "Adopt")}</button>
           </div>
@@ -61,7 +61,8 @@ export default async function PetPage({ searchParams }: { searchParams: Promise<
     db.linkedAccount.findFirst({ where: { userId: uid, provider: "riot" } }),
   ]);
   const have = new Set(owned.map((o) => o.key));
-  const species = pet.species as Species;
+  const species = asSpecies(pet.species);
+  const gear = parseGear(pet.gear);
   const level = levelFromXp(pet.xp);
   const baseStage = stageFromLevel(level);
   const cond = condition(pet.lastFedAt);
@@ -77,7 +78,6 @@ export default async function PetPage({ searchParams }: { searchParams: Promise<
     starving: L("Je hodně hladový a chátrá", "Je veľmi hladný a chradne", "Very hungry and fading"),
     sleeping: L("Vyhladověl a spí. Nakrm ho.", "Vyhladol a spí. Nakŕm ho.", "Starved and asleep. Feed it."),
   }[cond.mood];
-  const equipped = (k: string, kind: "hat" | "bg" | "tint") => pet![kind] === k;
 
   return (
     <div className="space-y-6">
@@ -85,7 +85,7 @@ export default async function PetPage({ searchParams }: { searchParams: Promise<
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
         <section className="card overflow-hidden">
           <div className="relative grid min-h-[380px] place-items-center" style={{ background: BG_CSS[pet.bg ?? "meadow"] }}>
-            <PetSprite species={species} stage={shown} mood={cond.mood} penalty={cond.penalty} hat={pet.hat} tint={pet.tint} size={300} />
+            <PetSprite species={species} stage={shown} mood={cond.mood} penalty={cond.penalty} gear={gear} size={340} />
             <div className="absolute left-4 top-4 rounded-xl bg-ink-950/70 px-3 py-2 backdrop-blur">
               <p className="text-lg font-extrabold text-white">{pet.name}</p>
               <p className="text-xs text-slate-300">{STAGE_NAMES[species][shown][li]} · {L("úroveň", "úroveň", "level")} {level}</p>
@@ -134,24 +134,52 @@ export default async function PetPage({ searchParams }: { searchParams: Promise<
         </aside>
       </div>
 
-      <section className="space-y-3">
+      <section className="space-y-5">
         <h2 className="text-xl font-bold">{L("Obchod a skříň", "Obchod a skriňa", "Shop & wardrobe")}</h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {SHOP.map((it) => {
-            const got = have.has(it.key);
-            const on = equipped(it.key, it.kind);
-            return (
-              <div key={it.key} className="card space-y-2 p-3">
-                <p className="text-xs uppercase tracking-wider text-slate-500">{it.kind === "hat" ? L("Čepice", "Čiapka", "Hat") : it.kind === "bg" ? L("Pozadí", "Pozadie", "Background") : L("Barva", "Farba", "Colour")}</p>
-                <p className="font-semibold text-white">{it.label[li]}</p>
-                {got ? (
-                  <form action={equipItem.bind(null, it.kind, on ? "" : it.key)}><button className={on ? "btn-ghost w-full" : "btn w-full"}>{on ? L("Sundat", "Zložiť", "Remove") : L("Nasadit", "Nasadiť", "Equip")}</button></form>
-                ) : (
-                  <form action={buyItem.bind(null, it.key)}><button className="btn-ghost w-full" disabled={pet!.coins < it.price}>🪙 {it.price}</button></form>
-                )}
-              </div>
-            );
-          })}
+        {SLOTS.map((slot) => (
+          <div key={slot} className="space-y-2">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400">{SLOT_LABEL[slot][li]}</h3>
+            <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
+              {SHOP.filter((it) => it.slot === slot).map((it) => {
+                const got = have.has(it.key);
+                const on = gear[slot] === it.key;
+                return (
+                  <div key={it.key} className={`card space-y-2 p-3 ${on ? "border-accent" : ""}`}>
+                    <div className="grid h-24 place-items-center rounded-lg bg-ink-900">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={`/pets/items/${it.key}.webp`} alt="" className="max-h-20 max-w-[85%] object-contain" />
+                    </div>
+                    <p className="text-sm font-semibold text-white">{it.label[li]}</p>
+                    {got ? (
+                      <form action={equipItem.bind(null, slot, on ? "" : it.key)}><button className={on ? "btn-ghost w-full" : "btn w-full"}>{on ? L("Sundat", "Zložiť", "Remove") : L("Nasadit", "Nasadiť", "Equip")}</button></form>
+                    ) : (
+                      <form action={buyItem.bind(null, it.key)}><button className="btn-ghost w-full" disabled={pet!.coins < it.price}>🪙 {it.price}</button></form>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+        <div className="space-y-2">
+          <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400">{L("Pozadí", "Pozadie", "Background")}</h3>
+          <div className="grid gap-3 sm:grid-cols-4">
+            {[{ key: "meadow", price: 0, label: ["Louka", "Lúka", "Meadow"] as [string, string, string] }, ...BG_SHOP].map((b) => {
+              const got = b.key === "meadow" || have.has(b.key);
+              const on = (pet!.bg ?? "meadow") === b.key;
+              return (
+                <div key={b.key} className={`card space-y-2 p-3 ${on ? "border-accent" : ""}`}>
+                  <div className="h-16 rounded-lg" style={{ background: BG_CSS[b.key] }} />
+                  <p className="text-sm font-semibold text-white">{b.label[li]}</p>
+                  {got ? (
+                    <form action={equipBg.bind(null, b.key)}><button className={on ? "btn-ghost w-full" : "btn w-full"} disabled={on}>{on ? L("Nasazeno", "Nasadené", "Active") : L("Nasadit", "Nasadiť", "Equip")}</button></form>
+                  ) : (
+                    <form action={buyItem.bind(null, b.key)}><button className="btn-ghost w-full" disabled={pet!.coins < b.price}>🪙 {b.price}</button></form>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </section>
     </div>

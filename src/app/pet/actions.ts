@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { isSpecies, SHOP } from "@/lib/pet";
+import { BG_SHOP, isSpecies, parseGear, SHOP, SLOTS, type Slot } from "@/lib/pet";
 
 async function me() {
   const s = await auth();
@@ -40,7 +40,7 @@ export async function feedPet() {
 
 export async function buyItem(key: string) {
   const u = await me();
-  const item = SHOP.find((i) => i.key === key);
+  const item = SHOP.find((i) => i.key === key) ?? BG_SHOP.find((i) => i.key === key);
   const pet = await db.pet.findUnique({ where: { userId: u.id } });
   if (!item || !pet) return done();
   if (await db.petItem.findUnique({ where: { userId_key: { userId: u.id, key } } })) return done();
@@ -52,14 +52,30 @@ export async function buyItem(key: string) {
   done("bought");
 }
 
-/** Nasadí / sundá zakoupenou věc. Prázdný key = sundat. */
-export async function equipItem(kind: "hat" | "bg" | "tint", key: string) {
+/** Nasadí / sundá zakoupený doplněk do slotu. Prázdný key = sundat. */
+export async function equipItem(slot: Slot, key: string) {
   const u = await me();
+  if (!SLOTS.includes(slot)) return done();
+  const pet = await db.pet.findUnique({ where: { userId: u.id } });
+  if (!pet) return done();
   if (key) {
-    const item = SHOP.find((i) => i.key === key && i.kind === kind);
+    const item = SHOP.find((i) => i.key === key && i.slot === slot);
     if (!item || !(await db.petItem.findUnique({ where: { userId_key: { userId: u.id, key } } }))) return done();
   }
-  await db.pet.update({ where: { userId: u.id }, data: { [kind]: key || null } });
+  const gear = parseGear(pet.gear);
+  if (key) gear[slot] = key;
+  else delete gear[slot];
+  await db.pet.update({ where: { userId: u.id }, data: { gear: JSON.stringify(gear) } });
+  done();
+}
+
+/** Nastaví pozadí (meadow je výchozí a zdarma). */
+export async function equipBg(key: string) {
+  const u = await me();
+  if (key && key !== "meadow") {
+    if (!BG_SHOP.some((b) => b.key === key) || !(await db.petItem.findUnique({ where: { userId_key: { userId: u.id, key } } }))) return done();
+  }
+  await db.pet.update({ where: { userId: u.id }, data: { bg: key === "meadow" ? null : key } });
   done();
 }
 

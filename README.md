@@ -151,3 +151,7 @@ Každý přihlášený hráč si vybere peta (`/pet`). Za odehrané hry z **ově
 Match-v5 (`RIOT_API_KEY`), nejvýš jednou za 5 minut při otevření stránky `/pet`. Nekrmený pet postupně vypadá hůř
 (po 16 h o stupeň, po 48 h spí), XP se neztrácí. Aplikace pro počítač má animovaný loading a v liště „Pet na ploše“
 (malé okno `/pet/widget`). Pravidla a čísla jsou v `src/lib/pet.ts`.
+
+Pet je z hotových obrázků (`public/pets/*.webp`, 5 druhů × 5 stupňů, doplňky v `public/pets/items`). Obrázky se připravují
+skriptem `scripts/process-pets.py` ze zdrojových PNG. Doplňky se skládají jako vrstvy podle kotev v `ANCHORS` / `ITEM_FIT`
+(`src/lib/pet.ts`); když doplněk někde špatně sedí, stačí upravit čísla tam.

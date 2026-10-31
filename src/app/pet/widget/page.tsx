@@ -2,7 +2,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getT, pick } from "@/lib/i18n";
 import PetSprite from "@/components/PetSprite";
-import { BG_CSS, STAGE_NAMES, condition, levelFromXp, shownStage, type Species } from "@/lib/pet";
+import { BG_CSS, STAGE_NAMES, asSpecies, condition, levelFromXp, parseGear, shownStage } from "@/lib/pet";
 import { feedPetWidget } from "../actions";
 
 export const metadata = { title: "Pet" };
@@ -22,14 +22,14 @@ export default async function PetWidget() {
       </div>
     );
   }
-  const species = pet.species as Species;
+  const species = asSpecies(pet.species);
   const level = levelFromXp(pet.xp);
   const c = condition(pet.lastFedAt);
   const stage = shownStage(level, c.penalty);
   return (
     <div className={wrap}>
       <div className="relative grid flex-1 place-items-center" style={{ background: BG_CSS[pet.bg ?? "meadow"], WebkitAppRegion: "drag" } as React.CSSProperties}>
-        <PetSprite species={species} stage={stage} mood={c.mood} penalty={c.penalty} hat={pet.hat} tint={pet.tint} size={230} />
+        <PetSprite species={species} stage={stage} mood={c.mood} penalty={c.penalty} gear={parseGear(pet.gear)} size={230} />
         <p className="absolute left-2 top-2 rounded-lg bg-ink-950/70 px-2 py-1 text-xs font-bold text-white">{pet.name} · {STAGE_NAMES[species][stage][li]} · {level}</p>
       </div>
       <div className="flex items-center justify-between gap-2 bg-ink-900 p-2 text-sm">

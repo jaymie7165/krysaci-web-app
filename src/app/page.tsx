@@ -11,7 +11,7 @@ import LolSearch from "@/components/LolSearch";
 import RankTag from "@/components/RankTag";
 import Onboarding from "@/components/Onboarding";
 import PetSprite from "@/components/PetSprite";
-import { condition, levelFromXp, shownStage, STAGE_NAMES, type Species } from "@/lib/pet";
+import { asSpecies, condition, levelFromXp, parseGear, shownStage, STAGE_NAMES } from "@/lib/pet";
 
 const tag = (l: Locale) => (l === "cs" ? "cs-CZ" : l === "sk" ? "sk-SK" : "en-GB");
 
@@ -361,10 +361,10 @@ export default async function Home() {
               const st = shownStage(lv, c.penalty);
               return (
                 <>
-                  <PetSprite species={pet.species as Species} stage={st} mood={c.mood} penalty={c.penalty} hat={pet.hat} tint={pet.tint} size={96} />
+                  <PetSprite species={asSpecies(pet.species)} stage={st} mood={c.mood} penalty={c.penalty} gear={parseGear(pet.gear)} size={96} />
                   <span className="min-w-0 flex-1">
                     <span className="block font-bold text-white">{pet.name}</span>
-                    <span className="block text-xs text-slate-400">{STAGE_NAMES[pet.species as Species][st][locale === "cs" ? 0 : locale === "sk" ? 1 : 2]} · {pick(locale, "úroveň", "úroveň", "level")} {lv}</span>
+                    <span className="block text-xs text-slate-400">{STAGE_NAMES[asSpecies(pet.species)][st][locale === "cs" ? 0 : locale === "sk" ? 1 : 2]} · {pick(locale, "úroveň", "úroveň", "level")} {lv}</span>
                     <span className={`mt-1 block text-xs font-semibold ${c.penalty > 0 || c.mood === "hungry" ? "text-ember" : "text-pulse"}`}>
                       {c.mood === "hungry" || c.penalty > 0 ? pick(locale, "Má hlad, nakrm ho", "Je hladný, nakŕm ho", "Hungry, feed it") : pick(locale, "Je v pohodě", "Je v pohode", "Doing fine")} · 🍖 {pet.treats}
                     </span>

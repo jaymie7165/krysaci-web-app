@@ -479,7 +479,7 @@ model Notification {
 model Pet {
   id          String   @id @default(cuid())
   userId      String   @unique
-  species     String // frog | cat | dog | dragon
+  species     String // dragon | cat | mushroom | butterfly | bat
   name        String
   xp          Int      @default(0)
   coins       Int      @default(0)
@@ -489,6 +489,7 @@ model Pet {
   hat         String?
   bg          String?
   tint        String?
+  gear        String   @default("{}")
   lastSyncAt  DateTime?
   socialDay   String   @default("")
   socialCount Int      @default(0)
