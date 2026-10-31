@@ -137,8 +137,38 @@ app.whenReady().then(() => {
   createWindow();
   buildTray();
 
+  // Konec hry: Riot vypíše zápas s prodlevou, proto se pet zkouší nakrmit po 75 s, 3 a 6 minutách.
+  let wasInGame = false;
+  let petTimers = [];
+  async function feedPetAfterGame() {
+    petTimers.forEach(clearTimeout);
+    petTimers = [];
+    [75_000, 180_000, 360_000].forEach((ms, idx, arr) => {
+      petTimers.push(setTimeout(async () => {
+        try {
+          const ses = (win && !win.isDestroyed() ? win : petWin).webContents.session;
+          const r = await ses.fetch(`${SITE}/api/pet/sync`, { method: "POST", credentials: "include", headers: { origin: SITE_ORIGIN } });
+          if (!r.ok) return;
+          const j = await r.json();
+          if (j.gained > 0) {
+            petTimers.forEach(clearTimeout);
+            if (Notification.isSupported()) {
+              const n = new Notification({ title: "Pet nakrmen", body: `Hra započítána: +${j.treats} pamlsků, +${j.xp} XP, +${j.coins} mincí.` });
+              n.on("click", togglePet);
+              n.show();
+            }
+            if (petWin && !petWin.isDestroyed()) petWin.webContents.reload();
+          }
+        } catch { /* příště */ }
+      }, ms));
+    });
+  }
+
   let lastPhase = "None";
   league.on("state", (s) => {
+    const inGame = ["GameStart", "InProgress", "Reconnect"].includes(s.phase);
+    if (inGame) wasInGame = true;
+    else if (wasInGame && s.connected) { wasInGame = false; feedPetAfterGame(); }
     if (win && !win.isDestroyed()) win.webContents.send("state", s);
     // Upozornění na začátek champ selectu, když je okno schované.
     if (s.phase === "ChampSelect" && lastPhase !== "ChampSelect" && Notification.isSupported() && (!win || !win.isVisible())) {
