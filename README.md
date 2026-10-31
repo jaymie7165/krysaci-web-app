@@ -41,6 +41,36 @@ Při startu se automaticky spustí `prisma db push` a seed her (`npm run start`)
 
 > Pozor: `prisma db push` je pohodlné pro rychlý start. Až budou v databázi ostrá data, přejdi na `prisma migrate` (`npm run db:migrate` lokálně a `prisma migrate deploy` při startu), aby změny schématu nemohly nic smazat.
 
+## Všechny proměnné prostředí
+
+**Web (Railway služba webu)**
+
+| Proměnná | Povinná | K čemu |
+|---|---|---|
+| `DATABASE_URL` | ano | `${{Postgres.DATABASE_URL}}` |
+| `AUTH_SECRET` | ano | `openssl rand -base64 32` |
+| `AUTH_DISCORD_ID`, `AUTH_DISCORD_SECRET` | ano | přihlášení přes Discord |
+| `AUTH_URL` nebo `NEXTAUTH_URL` | ano | veřejná adresa webu (odkazy v DM a oznámeních) |
+| `NEXT_PUBLIC_SITE_URL` | ano | stejná veřejná adresa |
+| `ADMIN_DISCORD_IDS` | ano | tvoje Discord ID (admin; čárkou víc) |
+| `BOT_API_KEY` | pro bota | sdílený klíč webu a bota |
+| `DISCORD_USE_BOT` | pro bota | `1` = oznamuje bot, vypne webhook (jinak by se zprávy zdvojily) |
+| `DISCORD_WEBHOOK_URL` | bez bota | oznámení do kanálu přes webhook |
+| `RIOT_API_KEY` | pro LoL | statistiky, ověření účtu, odměny peta |
+| `STEAM_API_KEY` | pro Steam | profil a „právě hraje“ |
+| `HENRIK_API_KEY` | volitelně | Valorant rank |
+| `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET` | volitelně | „je live“ na Twitchi |
+| `KICK_CLIENT_ID`, `KICK_CLIENT_SECRET` | volitelně | „je live“ na Kicku |
+| `LOLESPORTS_API_KEY`, `LOLESPORTS_LEAGUES` | volitelně | esportový přehled |
+| `DESKTOP_GITHUB_REPO` | volitelně | `uzivatel/repo` s releasem aplikace (stahování) |
+| `DESKTOP_DOWNLOAD_URL` | volitelně | přímý odkaz ke stažení místo GitHubu |
+| `CONTACT_EMAIL` | doporučeno | kontakt v právních stránkách |
+
+**Bot (druhá Railway služba, kořen `bot/`)**: `DISCORD_TOKEN`, `WEB_URL`, `BOT_API_KEY`, `GUILD_ID`, `CHANNEL_DEFAULT`
+(volitelně `CHANNEL_TOURNAMENTS`, `CHANNEL_CUSTOMS`, `CHANNEL_LFG`, `CHANNEL_NEWS`, `SYNC_PRESENCE`). Podrobně v `bot/README.md`.
+
+**Aplikace pro počítač**: žádné proměnné, adresa webu je v `desktop/` (volitelně `PLAYHAVEN_URL`).
+
 ## Statistiky a propojení účtů
 
 | Funkce | Co potřebuje | Poznámka |
