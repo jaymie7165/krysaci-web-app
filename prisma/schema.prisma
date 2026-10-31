@@ -315,7 +315,7 @@ model LinkedAccount {
   createdAt     DateTime @default(now())
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, provider, externalId]) // víc Riot účtů na hráče; Steam jen jeden (hlídá kód)
+  @@index([userId, provider, externalId]) // víc Riot účtů na hráče (duplicity a limit hlídá kód); Steam jen jeden
   // Neověřené propojení nesmí blokovat skutečného majitele, proto tu není unique.
   // Jeden OVĚŘENÝ vlastník na účet se hlídá v kódu.
   @@index([provider, externalId])
