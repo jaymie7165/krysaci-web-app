@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { BG_SHOP, isSpecies, parseGear, SHOP, SLOTS, type Slot } from "@/lib/pet";
+import { isSpecies, MAX_SLOTS, parseGear, SHOP, SLOT_PRICE, SLOTS, type Slot } from "@/lib/pet";
 
 async function me() {
   const s = await auth();
@@ -40,7 +40,7 @@ export async function feedPet() {
 
 export async function buyItem(key: string) {
   const u = await me();
-  const item = SHOP.find((i) => i.key === key) ?? BG_SHOP.find((i) => i.key === key);
+  const item = SHOP.find((i) => i.key === key);
   const pet = await db.pet.findUnique({ where: { userId: u.id } });
   if (!item || !pet) return done();
   if (await db.petItem.findUnique({ where: { userId_key: { userId: u.id, key } } })) return done();
@@ -69,14 +69,43 @@ export async function equipItem(slot: Slot, key: string) {
   done();
 }
 
-/** Nastaví pozadí (meadow je výchozí a zdarma). */
-export async function equipBg(key: string) {
+/** Koupí další slot na peta (max. tolik, kolik je druhů). */
+export async function buySlot() {
   const u = await me();
-  if (key && key !== "meadow") {
-    if (!BG_SHOP.some((b) => b.key === key) || !(await db.petItem.findUnique({ where: { userId_key: { userId: u.id, key } } }))) return done();
-  }
-  await db.pet.update({ where: { userId: u.id }, data: { bg: key === "meadow" ? null : key } });
-  done();
+  const pet = await db.pet.findUnique({ where: { userId: u.id } });
+  if (!pet) return done();
+  if (pet.slots >= MAX_SLOTS) return done();
+  if (pet.coins < SLOT_PRICE) return done("nocoins");
+  await db.pet.update({ where: { userId: u.id }, data: { coins: { decrement: SLOT_PRICE }, slots: { increment: 1 } } });
+  done("slotbought");
+}
+
+/** Adoptuje dalšího peta do volného slotu (druh, který hráč ještě nemá). Začíná odpočívat ve sbírce. */
+export async function adoptExtra(fd: FormData) {
+  const u = await me();
+  const species = String(fd.get("species") ?? "");
+  const name = String(fd.get("name") ?? "").trim().slice(0, 20);
+  const pet = await db.pet.findUnique({ where: { userId: u.id } });
+  if (!pet || !isSpecies(species) || name.length < 2) return done("petname");
+  const stored = await db.petStored.findMany({ where: { userId: u.id }, select: { species: true } });
+  if (pet.species === species || stored.some((x) => x.species === species)) return done("petowned");
+  if (stored.length + 1 >= pet.slots) return done("noslot");
+  await db.petStored.create({ data: { userId: u.id, species, name } });
+  done("adopted");
+}
+
+/** Prohodí aktivního peta s peta ze sbírky. Odpočívající pet nehladoví (hlad se uloží a po návratu obnoví). */
+export async function switchPet(storedId: string) {
+  const u = await me();
+  const pet = await db.pet.findUnique({ where: { userId: u.id } });
+  const st = await db.petStored.findFirst({ where: { id: storedId, userId: u.id } });
+  if (!pet || !st) return done();
+  const hungerMs = Math.min(2_000_000_000, Math.max(0, Date.now() - pet.lastFedAt.getTime()));
+  await db.$transaction([
+    db.petStored.update({ where: { id: st.id }, data: { species: pet.species, name: pet.name, xp: pet.xp, hungerMs, gear: pet.gear } }),
+    db.pet.update({ where: { userId: u.id }, data: { species: st.species, name: st.name, xp: st.xp, gear: st.gear, lastFedAt: new Date(Date.now() - st.hungerMs) } }),
+  ]);
+  done("switched");
 }
 
 /** Krmení z malého okna na ploše (zůstane v okně). */

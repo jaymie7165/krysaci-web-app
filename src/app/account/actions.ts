@@ -23,6 +23,9 @@ async function me() {
   return s.user;
 }
 
+/** Kolik LoL účtů smí hráč propojit (všechny krmí jeho peta). */
+const MAX_RIOT_ACCOUNTS = 5;
+
 function riotErrorCode(e: unknown) {
   const status = e instanceof RiotError ? e.status : 0;
   return status === 404 ? "error=riot_notfound"
@@ -47,11 +50,14 @@ export async function linkRiot(fd: FormData) {
     const verifiedOwner = await db.linkedAccount.findFirst({
       where: { provider: "riot", externalId: acc.puuid, verified: true, NOT: { userId: u.id } },
     });
+    const count0 = await db.linkedAccount.count({ where: { userId: u.id, provider: "riot", NOT: { externalId: acc.puuid } } });
     if (verifiedOwner) {
       result = "error=riot_taken";
+    } else if (count0 >= MAX_RIOT_ACCOUNTS) {
+      result = "error=riot_toomany";
     } else {
-      const mine = await db.linkedAccount.findUnique({ where: { userId_provider: { userId: u.id, provider: "riot" } } });
-      const same = mine?.externalId === acc.puuid;
+      const mine = await db.linkedAccount.findFirst({ where: { userId: u.id, provider: "riot", externalId: acc.puuid } });
+      const same = !!mine;
       const avatarUrl = await getProfileIcon(acc.puuid, platform).catch(() => null);
       const data = {
         externalId: acc.puuid,
@@ -64,11 +70,8 @@ export async function linkRiot(fd: FormData) {
         verified: same ? mine!.verified : false,
         verifyIcon: same ? mine!.verifyIcon : null,
       };
-      await db.linkedAccount.upsert({
-        where: { userId_provider: { userId: u.id, provider: "riot" } },
-        update: data,
-        create: { userId: u.id, provider: "riot", ...data },
-      });
+      if (mine) await db.linkedAccount.update({ where: { id: mine.id }, data });
+      else await db.linkedAccount.create({ data: { userId: u.id, provider: "riot", ...data } });
       result = "ok=riot";
     }
   } catch (e) {
@@ -79,9 +82,9 @@ export async function linkRiot(fd: FormData) {
 }
 
 /** Vybere ikonu, kterou si má hráč v LoL nastavit. */
-export async function startRiotVerify() {
+export async function startRiotVerify(accountId: string) {
   const u = await me();
-  const acc = await db.linkedAccount.findUnique({ where: { userId_provider: { userId: u.id, provider: "riot" } } });
+  const acc = await db.linkedAccount.findFirst({ where: { id: accountId, userId: u.id, provider: "riot" } });
   if (!acc || acc.verified) redirect("/account");
 
   let current = -1;
@@ -98,9 +101,9 @@ export async function startRiotVerify() {
 }
 
 /** Zkontroluje u Riotu, že má hráč nastavenou požadovanou ikonu. */
-export async function checkRiotVerify() {
+export async function checkRiotVerify(accountId: string) {
   const u = await me();
-  const acc = await db.linkedAccount.findUnique({ where: { userId_provider: { userId: u.id, provider: "riot" } } });
+  const acc = await db.linkedAccount.findFirst({ where: { id: accountId, userId: u.id, provider: "riot" } });
   if (!acc || acc.verified || acc.verifyIcon == null) redirect("/account");
 
   let result: string;
@@ -130,10 +133,10 @@ export async function checkRiotVerify() {
   redirect(`/account?${result}`);
 }
 
-export async function unlinkAccount(provider: string) {
+export async function unlinkAccount(provider: string, accountId?: string) {
   const u = await me();
   if (provider !== "steam" && provider !== "riot") return;
-  await db.linkedAccount.deleteMany({ where: { userId: u.id, provider } });
+  await db.linkedAccount.deleteMany({ where: { userId: u.id, provider, ...(accountId ? { id: accountId } : {}) } });
   revalidatePath("/account");
   redirect("/account");
 }

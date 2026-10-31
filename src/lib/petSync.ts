@@ -36,10 +36,13 @@ async function connectedUserIds(userId: string): Promise<Set<string>> {
  * trvat aspoň 5 minut a nesmí být remake. Se spoluhráčem z komunity dostaneš dvojnásobek (denní strop).
  * Volá se při otevření stránky peta a nejvýš jednou za 5 minut.
  */
-export async function syncPetGames(userId: string): Promise<{ gained: number; error?: string }> {
+export type SyncResult = { gained: number; treats?: number; xp?: number; coins?: number; error?: string };
+
+/** `force` (aplikace po konci hry) povolí kontrolu po 30 s místo 5 minut. */
+export async function syncPetGames(userId: string, opts: { force?: boolean } = {}): Promise<SyncResult> {
   const pet = await db.pet.findUnique({ where: { userId } });
   if (!pet) return { gained: 0 };
-  if (pet.lastSyncAt && Date.now() - pet.lastSyncAt.getTime() < 5 * 60 * 1000) return { gained: 0 };
+  if (pet.lastSyncAt && Date.now() - pet.lastSyncAt.getTime() < (opts.force ? 30_000 : 5 * 60 * 1000)) return { gained: 0 };
   await db.pet.update({ where: { userId }, data: { lastSyncAt: new Date() } });
 
   const accounts = await db.linkedAccount.findMany({ where: { userId, provider: "riot", verified: true } });
@@ -81,5 +84,5 @@ export async function syncPetGames(userId: string): Promise<{ gained: number; er
       data: { treats: { increment: treats }, xp: { increment: xp }, coins: { increment: coins }, socialDay: today(), socialCount },
     });
   }
-  return { gained };
+  return { gained, treats, xp, coins };
 }

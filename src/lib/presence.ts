@@ -28,7 +28,7 @@ type DiscordSnapshot = { updatedAt: number; players: { discordId: string; game: 
  * Kdo právě hraje. Zdroje podle priority: LoL živá hra, Steam, Discord (posílá bot).
  * Ukazují se jen hráči, kteří to mají povolené (User.showActivity).
  */
-export async function getLiveNow(): Promise<LiveEntry[]> {
+async function computeLiveNow(): Promise<LiveEntry[]> {
   const out = new Map<string, LiveEntry>();
 
   const users = await db.user.findMany({
@@ -61,13 +61,12 @@ export async function getLiveNow(): Promise<LiveEntry[]> {
 
   // 3. LoL živá hra (jen ověřené Riot účty, nejvýš 25 kvůli limitům Riotu)
   if (process.env.RIOT_API_KEY) {
-    const riotUsers = (users as U[])
-      .filter((u) => u.linkedAccounts.some((a: { provider: string; verified: boolean }) => a.provider === "riot" && a.verified))
-      .slice(0, 25);
+    const riotAccs = (users as U[])
+      .flatMap((u) => u.linkedAccounts.filter((a: { provider: string; verified: boolean }) => a.provider === "riot" && a.verified).map((a) => [u, a] as const))
+      .slice(0, 40);
     const briefs = await withTimeout(
       Promise.all(
-        riotUsers.map(async (u) => {
-          const a = u.linkedAccounts.find((x: { provider: string }) => x.provider === "riot")!;
+        riotAccs.map(async ([u, a]) => {
           const g = await getLiveBrief(a.externalId, a.region ?? DEFAULT_PLATFORM).catch(() => null);
           return [u, g] as const;
         })
@@ -89,4 +88,22 @@ export async function getLiveNow(): Promise<LiveEntry[]> {
   }
 
   return [...out.values()];
+}
+
+/**
+ * Kdo právě hraje, s pamětí na 30 s: web se nemusí při každém zobrazení ptát Steamu a Riotu.
+ * Po vypršení vrátí starou hodnotu hned a obnoví ji na pozadí (stránka nečeká na cizí servery).
+ */
+let liveMemo: { at: number; data: LiveEntry[] } | null = null;
+let liveInflight: Promise<LiveEntry[]> | null = null;
+function refreshLive() {
+  liveInflight ??= computeLiveNow()
+    .then((data) => { liveMemo = { at: Date.now(), data }; return data; })
+    .finally(() => { liveInflight = null; });
+  return liveInflight;
+}
+export async function getLiveNow(): Promise<LiveEntry[]> {
+  if (liveMemo && Date.now() - liveMemo.at < 30_000) return liveMemo.data;
+  if (liveMemo) { refreshLive().catch(() => {}); return liveMemo.data; }
+  return refreshLive();
 }

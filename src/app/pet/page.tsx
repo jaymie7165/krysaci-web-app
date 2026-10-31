@@ -6,11 +6,11 @@ import { getT, pick } from "@/lib/i18n";
 import Notice from "@/components/Notice";
 import PetSprite from "@/components/PetSprite";
 import {
-  BG_CSS, BG_SHOP, GAME_REWARD, SHOP, SLOTS, SLOT_LABEL, SPECIES, SPECIES_LABEL, STAGE_LEVELS, STAGE_NAMES, SLEEP_HOURS,
-  asSpecies, condition, levelFromXp, parseGear, shownStage, stageFromLevel, xpForLevel,
+  GAME_REWARD, MAX_SLOTS, SHOP, SLOTS, SLOT_LABEL, SLOT_PRICE, SPECIES, SPECIES_LABEL, STAGE_LEVELS, STAGE_NAMES, SLEEP_HOURS,
+  asSpecies, bgUrl, condition, levelFromXp, parseGear, shownStage, stageFromLevel, xpForLevel,
 } from "@/lib/pet";
 import { syncPetGames } from "@/lib/petSync";
-import { adoptPet, buyItem, equipBg, equipItem, feedPet } from "./actions";
+import { adoptExtra, adoptPet, buySlot, buyItem, equipItem, feedPet, switchPet } from "./actions";
 
 export const metadata = { title: "Pet" };
 
@@ -31,11 +31,11 @@ export default async function PetPage({ searchParams }: { searchParams: Promise<
         <p className="text-slate-300">{L("Pet roste, když hraješ. Za každou odehranou hru dostane pamlsky, XP a ty peníze na doplňky. Hry s lidmi z komunity dávají dvojnásobek. Když ho nekrmíš, jeho vzhled se zhoršuje.", "Pet rastie, keď hráš. Za každú odohranú hru dostane maškrty, XP a ty peniaze na doplnky. Hry s ľuďmi z komunity dávajú dvojnásobok. Keď ho nekŕmiš, jeho vzhľad sa zhoršuje.", "Your pet grows as you play. Every finished game gives treats, XP and coins for accessories. Games with community members give double. If you don't feed it, it gets worse-looking.")}</p>
         <Notice msg={msg} locale={locale} />
         <form action={adoptPet} className="space-y-5">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             {SPECIES.map((sp, i) => (
               <label key={sp} className="card cursor-pointer space-y-2 p-4 text-center has-[:checked]:border-accent has-[:checked]:bg-accent/10">
                 <input type="radio" name="species" value={sp} defaultChecked={i === 0} className="sr-only" />
-                <div className="mx-auto w-fit"><PetSprite species={sp} stage={sp === "dragon" ? 1 : 1} mood="ok" size={170} /></div>
+                <div className="mx-auto w-fit"><PetSprite species={sp} stage={1} mood="ok" size={150} /></div>
                 <p className="font-bold text-white">{SPECIES_LABEL[sp][li]}</p>
                 <p className="text-xs text-slate-400">{STAGE_NAMES[sp][0][li]} → {STAGE_NAMES[sp][4][li]}</p>
               </label>
@@ -55,10 +55,11 @@ export default async function PetPage({ searchParams }: { searchParams: Promise<
 
   const sync = await syncPetGames(uid).catch(() => ({ gained: 0, error: "x" }));
   if (sync.gained > 0) pet = (await db.pet.findUnique({ where: { userId: uid } })) ?? pet;
-  const [owned, games, riot] = await Promise.all([
+  const [owned, games, riot, stored] = await Promise.all([
     db.petItem.findMany({ where: { userId: uid } }),
     db.petGame.findMany({ where: { userId: uid, counted: true }, orderBy: { createdAt: "desc" }, take: 8 }),
-    db.linkedAccount.findFirst({ where: { userId: uid, provider: "riot" } }),
+    db.linkedAccount.findFirst({ where: { userId: uid, provider: "riot", verified: true } }),
+    db.petStored.findMany({ where: { userId: uid }, orderBy: { adoptedAt: "asc" } }),
   ]);
   const have = new Set(owned.map((o) => o.key));
   const species = asSpecies(pet.species);
@@ -84,7 +85,7 @@ export default async function PetPage({ searchParams }: { searchParams: Promise<
       <Notice msg={msg} locale={locale} />
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
         <section className="card overflow-hidden">
-          <div className="relative grid min-h-[380px] place-items-center" style={{ background: BG_CSS[pet.bg ?? "meadow"] }}>
+          <div className="relative flex aspect-[4/3] min-h-[320px] w-full items-end justify-center bg-cover bg-bottom pb-[4%] sm:aspect-[16/10]" style={{ backgroundImage: `url(${bgUrl(species)})` }}>
             <PetSprite species={species} stage={shown} mood={cond.mood} penalty={cond.penalty} gear={gear} size={340} />
             <div className="absolute left-4 top-4 rounded-xl bg-ink-950/70 px-3 py-2 backdrop-blur">
               <p className="text-lg font-extrabold text-white">{pet.name}</p>
@@ -134,12 +135,60 @@ export default async function PetPage({ searchParams }: { searchParams: Promise<
         </aside>
       </div>
 
+      <section className="space-y-3">
+        <h2 className="text-xl font-bold">{L("Moje sbírka", "Moja zbierka", "My collection")} <span className="text-sm font-normal text-slate-400">{stored.length + 1}/{pet.slots} {L("slotů", "slotov", "slots")}</span></h2>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          {SPECIES.map((sp) => {
+            const isActive = sp === species;
+            const st = stored.find((x) => x.species === sp);
+            const lv = isActive ? level : st ? levelFromXp(st.xp) : 0;
+            const owned = isActive || !!st;
+            return (
+              <div key={sp} className={`card space-y-2 p-3 text-center ${isActive ? "border-accent" : ""} ${owned ? "" : "opacity-60"}`}>
+                <div className="relative mx-auto aspect-square w-full max-w-[120px] overflow-hidden rounded-lg bg-cover bg-bottom" style={{ backgroundImage: `url(${bgUrl(sp)})` }}>
+                  {owned ? (
+                    <PetSprite species={sp} stage={stageFromLevel(lv)} mood="ok" gear={isActive ? gear : parseGear(st?.gear)} size={120} />
+                  ) : (
+                    <span className="absolute inset-0 grid place-items-center bg-ink-950/70 text-2xl">🔒</span>
+                  )}
+                </div>
+                <p className="text-sm font-semibold text-white">{owned ? (isActive ? pet!.name : st!.name) : SPECIES_LABEL[sp][li]}</p>
+                {owned && <p className="text-xs text-slate-400">{L("úroveň", "úroveň", "level")} {lv}</p>}
+                {isActive ? <p className="text-xs font-bold text-accent-soft">{L("Aktivní", "Aktívny", "Active")}</p>
+                  : st ? <form action={switchPet.bind(null, st.id)}><button className="btn w-full">{L("Aktivovat", "Aktivovať", "Activate")}</button></form>
+                  : null}
+              </div>
+            );
+          })}
+        </div>
+        {stored.length + 1 < pet.slots ? (
+          <form action={adoptExtra} className="card flex flex-wrap items-end gap-3 p-4">
+            <div>
+              <label className="label">{L("Druh", "Druh", "Species")}</label>
+              <select name="species" className="input w-44">
+                {SPECIES.filter((sp) => sp !== species && !stored.some((x) => x.species === sp)).map((sp) => <option key={sp} value={sp}>{SPECIES_LABEL[sp][li]}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="label">{L("Jméno peta", "Meno peta", "Pet name")}</label>
+              <input name="name" required minLength={2} maxLength={20} className="input w-56" />
+            </div>
+            <button className="btn">{L("Adoptovat do volného slotu", "Adoptovať do voľného slotu", "Adopt into free slot")}</button>
+          </form>
+        ) : pet.slots < MAX_SLOTS ? (
+          <form action={buySlot} className="card flex flex-wrap items-center gap-3 p-4">
+            <p className="flex-1 text-sm text-slate-300">{L("Všechny sloty jsou plné. Další slot ti umožní adoptovat dalšího peta a nasbírat je všechny. Odpočívající pet nehladoví.", "Všetky sloty sú plné. Ďalší slot ti umožní adoptovať ďalšieho peta a nazbierať ich všetkých. Odpočívajúci pet nehladuje.", "All slots are full. Another slot lets you adopt another pet and collect them all. Resting pets don't get hungry.")}</p>
+            <button className="btn" disabled={pet.coins < SLOT_PRICE}>🪙 {SLOT_PRICE} · {L("koupit slot", "kúpiť slot", "buy slot")}</button>
+          </form>
+        ) : <p className="text-sm text-gold">{L("Máš celou sbírku. Gratulujeme!", "Máš celú zbierku. Gratulujeme!", "You have the full collection!")}</p>}
+      </section>
+
       <section className="space-y-5">
         <h2 className="text-xl font-bold">{L("Obchod a skříň", "Obchod a skriňa", "Shop & wardrobe")}</h2>
         {SLOTS.map((slot) => (
           <div key={slot} className="space-y-2">
             <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400">{SLOT_LABEL[slot][li]}</h3>
-            <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
               {SHOP.filter((it) => it.slot === slot).map((it) => {
                 const got = have.has(it.key);
                 const on = gear[slot] === it.key;
@@ -161,26 +210,6 @@ export default async function PetPage({ searchParams }: { searchParams: Promise<
             </div>
           </div>
         ))}
-        <div className="space-y-2">
-          <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400">{L("Pozadí", "Pozadie", "Background")}</h3>
-          <div className="grid gap-3 sm:grid-cols-4">
-            {[{ key: "meadow", price: 0, label: ["Louka", "Lúka", "Meadow"] as [string, string, string] }, ...BG_SHOP].map((b) => {
-              const got = b.key === "meadow" || have.has(b.key);
-              const on = (pet!.bg ?? "meadow") === b.key;
-              return (
-                <div key={b.key} className={`card space-y-2 p-3 ${on ? "border-accent" : ""}`}>
-                  <div className="h-16 rounded-lg" style={{ background: BG_CSS[b.key] }} />
-                  <p className="text-sm font-semibold text-white">{b.label[li]}</p>
-                  {got ? (
-                    <form action={equipBg.bind(null, b.key)}><button className={on ? "btn-ghost w-full" : "btn w-full"} disabled={on}>{on ? L("Nasazeno", "Nasadené", "Active") : L("Nasadit", "Nasadiť", "Equip")}</button></form>
-                  ) : (
-                    <form action={buyItem.bind(null, b.key)}><button className="btn-ghost w-full" disabled={pet!.coins < b.price}>🪙 {b.price}</button></form>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
       </section>
     </div>
   );

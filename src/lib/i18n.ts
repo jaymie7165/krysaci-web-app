@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { cookies } from "next/headers";
 
 export const LOCALES = ["cs", "sk", "en"] as const;
@@ -332,10 +333,10 @@ const dict = {
 
 export type Key = keyof (typeof dict)["cs"];
 
-export async function getLocale(): Promise<Locale> {
+export const getLocale = cache(async function getLocale(): Promise<Locale> {
   const c = (await cookies()).get("lang")?.value;
   return (LOCALES as readonly string[]).includes(c ?? "") ? (c as Locale) : "cs";
-}
+});
 
 export async function getT() {
   const locale = await getLocale();

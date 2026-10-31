@@ -57,7 +57,7 @@ export default async function Home() {
   const user = session?.user;
   const now = new Date();
 
-  const [tournaments, customs, lfg, games, accounts, live, latestNews, userCount, lfgOpen, esports] = await Promise.all([
+  const [tournaments, customs, lfg, games, accounts, live, latestNews, userCount, lfgOpen, esports, pet] = await Promise.all([
     db.tournament.findMany({
       where: { status: "UPCOMING", startsAt: { gte: now } },
       orderBy: { startsAt: "asc" },
@@ -83,6 +83,7 @@ export default async function Home() {
     db.user.count().catch(() => 0),
     db.lfgPost.count({ where: { open: true } }).catch(() => 0),
     db.esportsMatch.findMany({ where: { OR: [{ status: "live" }, { status: "upcoming", startsAt: { gte: now } }] }, orderBy: { startsAt: "asc" }, take: 4 }).catch(() => []),
+    user ? db.pet.findUnique({ where: { userId: user.id } }).catch(() => null) : Promise.resolve(null),
   ]);
 
   const steam = accounts.find((a) => a.provider === "steam");
@@ -127,7 +128,6 @@ export default async function Home() {
     }).length;
   };
 
-  const pet = user ? await db.pet.findUnique({ where: { userId: user.id } }).catch(() => null) : null;
   const topGames = [...games].sort((a, b) => liveFor(b.name) - liveFor(a.name)).slice(0, 6);
   const Head = ({ title, href, more }: { title: string; href?: string; more?: string }) => (
     <div className="mb-3 flex items-center justify-between gap-3">

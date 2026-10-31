@@ -32,7 +32,7 @@ export default function PetSprite({
 
   const fit = (k?: string) => (k ? ITEM_FIT[k] ?? { scale: 1 } : { scale: 1 });
   return (
-    <div className="relative shrink-0" style={{ width: size, height: size }}>
+    <div className="relative mx-auto shrink-0" style={{ width: size, maxWidth: "100%", aspectRatio: "1 / 1" }}>
       <div className="absolute bottom-0 left-1/2 h-[7%] w-[55%] -translate-x-1/2 rounded-[50%] bg-black/30 blur-md" />
       <div className="absolute bottom-0 left-1/2" style={{ height: `${h * 92}%`, aspectRatio: `${pw}/${ph}`, transform: "translateX(-50%)" }}>
         <div className={`absolute inset-0 ${motion}`} style={{ transformOrigin: "50% 100%" }}>

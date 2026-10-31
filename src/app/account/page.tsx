@@ -38,13 +38,14 @@ export default async function AccountPage({
   const accounts = await db.linkedAccount.findMany({ where: { userId: session.user.id } });
   const me = await db.user.findUnique({ where: { id: session.user.id }, select: { showActivity: true, notifyDiscord: true, twitchLogin: true, kickLogin: true } });
   const steam = accounts.find((a) => a.provider === "steam");
-  const riot = accounts.find((a) => a.provider === "riot");
-
-  const verifyIconUrl = riot?.verifyIcon != null ? await profileIconUrl(riot.verifyIcon).catch(() => null) : null;
+  const riots = accounts.filter((a) => a.provider === "riot").sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+  const riotIcons = new Map<string, string | null>();
+  await Promise.all(riots.filter((r) => r.verifyIcon != null).map(async (r) => riotIcons.set(r.id, await profileIconUrl(r.verifyIcon!).catch(() => null))));
 
   const errors: Record<string, string> = {
     steam_failed: pick(locale, "Přihlášení přes Steam se nepovedlo. Zkus to znovu.", "Prihlásenie cez Steam sa nepodarilo. Skús to znova.", "Steam sign-in failed. Please try again."),
     steam_taken: pick(locale, "Tenhle Steam účet už je propojený s jiným hráčem.", "Tento Steam účet je už prepojený s iným hráčom.", "This Steam account is already linked to another player."),
+    riot_toomany: pick(locale, "Můžeš propojit nejvýš 5 LoL účtů.", "Môžeš prepojiť najviac 5 LoL účtov.", "You can link at most 5 LoL accounts."),
     riot_format: pick(locale, "Zadej Riot ID ve tvaru Jmeno#TAG.", "Zadaj Riot ID v tvare Meno#TAG.", "Enter a Riot ID like Name#TAG."),
     riot_notfound: pick(locale, "Takový Riot účet jsem nenašel. Zkontroluj Riot ID a server.", "Taký Riot účet som nenašiel. Skontroluj Riot ID a server.", "No such Riot account. Check the Riot ID and server."),
     riot_taken: pick(locale, "Tenhle Riot účet už je propojený s jiným hráčem.", "Tento Riot účet je už prepojený s iným hráčom.", "This Riot account is already linked to another player."),
@@ -133,7 +134,7 @@ export default async function AccountPage({
             </p>
           </div>
           {steam ? (
-            <form action={unlinkAccount.bind(null, "steam")}>
+            <form action={unlinkAccount.bind(null, "steam", undefined)}>
               <button className="btn-ghost">{pick(locale, "Odpojit", "Odpojiť", "Unlink")}</button>
             </form>
           ) : (
@@ -152,31 +153,24 @@ export default async function AccountPage({
         )}
       </section>
 
-      {/* Riot */}
-      <section className="card space-y-4 p-5">
-        <div className="flex items-center gap-4">
-          {riot?.avatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={riot.avatarUrl} alt="" className="h-12 w-12 rounded-xl" />
-          ) : (
-            <span className="h-12 w-12 rounded-xl bg-ink-600" />
-          )}
-          <div className="flex-1">
-            <h2 className="text-lg font-semibold">Riot Games (LoL, VALORANT)</h2>
-            <p className="text-sm text-slate-400">
-              {riot
-                ? `${riot.displayName}, ${PLATFORMS[riot.region ?? ""]?.label ?? riot.region}`
-                : pick(locale, "Propoj Riot ID a uvidíš tady statistiky z LoL.", "Prepoj Riot ID a uvidíš tu štatistiky z LoL.", "Link your Riot ID to see your LoL stats here.")}
-            </p>
-          </div>
-          {riot && (
-            <form action={unlinkAccount.bind(null, "riot")}>
+      {/* Riot (víc účtů, všechny krmí peta) */}
+      {riots.map((riot) => (
+        <section key={riot.id} className="card space-y-4 p-5">
+          <div className="flex items-center gap-4">
+            {riot.avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={riot.avatarUrl} alt="" className="h-12 w-12 rounded-xl" />
+            ) : (
+              <span className="h-12 w-12 rounded-xl bg-ink-600" />
+            )}
+            <div className="flex-1">
+              <h2 className="text-lg font-semibold">Riot Games (LoL, VALORANT)</h2>
+              <p className="text-sm text-slate-400">{`${riot.displayName}, ${PLATFORMS[riot.region ?? ""]?.label ?? riot.region}`}</p>
+            </div>
+            <form action={unlinkAccount.bind(null, "riot", riot.id)}>
               <button className="btn-ghost">{pick(locale, "Odpojit", "Odpojiť", "Unlink")}</button>
             </form>
-          )}
-        </div>
-
-        {riot ? (
+          </div>
           <>
             {riot.verified ? (
               <>
@@ -213,16 +207,16 @@ export default async function AccountPage({
                         "You'll get an icon to set in League of Legends for a few minutes. That proves the account is yours. Valorant rank is only shown for verified accounts."
                       )}
                     </p>
-                    <form action={startRiotVerify}>
+                    <form action={startRiotVerify.bind(null, riot.id)}>
                       <button className="btn">{pick(locale, "Začít ověření", "Začať overenie", "Start verification")}</button>
                     </form>
                   </>
                 ) : (
                   <>
                     <div className="flex items-center gap-4">
-                      {verifyIconUrl && (
+                      {riotIcons.get(riot.id) && (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={verifyIconUrl} alt="" className="h-16 w-16 rounded-xl border border-ink-600" />
+                        <img src={riotIcons.get(riot.id) ?? undefined} alt="" className="h-16 w-16 rounded-xl border border-ink-600" />
                       )}
                       <p className="text-sm text-slate-300">
                         {pick(
@@ -233,7 +227,7 @@ export default async function AccountPage({
                         )}
                       </p>
                     </div>
-                    <form action={checkRiotVerify}>
+                    <form action={checkRiotVerify.bind(null, riot.id)}>
                       <button className="btn">{pick(locale, "Zkontrolovat", "Skontrolovať", "Check")}</button>
                     </form>
                   </>
@@ -244,7 +238,18 @@ export default async function AccountPage({
               {pick(locale, "Zobrazit moje LoL statistiky", "Zobraziť moje LoL štatistiky", "View my LoL stats")}
             </Link>
           </>
-        ) : (
+        </section>
+      ))}
+      {riots.length < 5 && (
+        <section className="card space-y-4 p-5">
+          <div>
+            <h2 className="text-lg font-semibold">{riots.length ? pick(locale, "Přidat další LoL účet", "Pridať ďalší LoL účet", "Add another LoL account") : "Riot Games (LoL, VALORANT)"}</h2>
+            <p className="text-sm text-slate-400">
+              {riots.length
+                ? pick(locale, "Hry ze všech ověřených účtů krmí tvého peta, na kterém hraješ nehledě.", "Hry zo všetkých overených účtov kŕmia tvojho peta, na ktorom hráš bez ohľadu.", "Games from all verified accounts feed your pet, whichever one you play on.")
+                : pick(locale, "Propoj Riot ID a uvidíš tady statistiky z LoL.", "Prepoj Riot ID a uvidíš tu štatistiky z LoL.", "Link your Riot ID to see your LoL stats here.")}
+            </p>
+          </div>
           <form action={linkRiot} className="space-y-3">
             <div className="flex flex-col gap-2 sm:flex-row">
               <select name="platform" defaultValue={DEFAULT_PLATFORM} aria-label="Server" className="input sm:w-28">
@@ -267,8 +272,8 @@ export default async function AccountPage({
               </span>
             </label>
           </form>
-        )}
-      </section>
+        </section>
+      )}
       <section className="card space-y-3 p-5">
         <h2 className="text-lg font-semibold">{pick(locale, "Oznámení a streamy", "Oznámenia a streamy", "Notifications & streams")}</h2>
         <form action={saveNotifySettings} className="space-y-3">

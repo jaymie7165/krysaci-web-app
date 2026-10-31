@@ -1,3 +1,4 @@
+import { cache } from "react";
 import NextAuth from "next-auth";
 import Discord from "next-auth/providers/discord";
 import { db } from "@/lib/db";
@@ -40,7 +41,7 @@ const adminIds = (process.env.ADMIN_DISCORD_IDS ?? "")
   .map((s) => s.trim())
   .filter(Boolean);
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
+export const { handlers, auth: rawAuth, signIn, signOut } = NextAuth({
   providers: [
     Discord({
       clientId: process.env.AUTH_DISCORD_ID,
@@ -105,3 +106,6 @@ export async function requireUser() {
   if (!session?.user?.id) throw new Error("UNAUTHENTICATED");
   return session.user;
 }
+
+/** Relace se v rámci jednoho požadavku načte jen jednou (layout, navigace i stránka se na ni ptají). */
+export const auth = cache(rawAuth) as typeof rawAuth;

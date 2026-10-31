@@ -17,18 +17,19 @@ export default async function TournamentsPage({ searchParams }: { searchParams: 
   const session = await auth();
   const me = session?.user;
   const isAdmin = me?.role === "ADMIN";
-  const [items, games] = await Promise.all([
-    db.tournament.findMany({
-      orderBy: { startsAt: "asc" },
-      include: {
-        game: true,
-        organizer: true,
-        entries: { include: { user: true } },
-        teams: { include: { entries: { include: { user: true } } }, orderBy: { createdAt: "asc" } },
-      },
-    }),
+  const inc = {
+    game: true,
+    organizer: true,
+    entries: { include: { user: true } },
+    teams: { include: { entries: { include: { user: true } } }, orderBy: { createdAt: "asc" as const } },
+  };
+  // Aktivní turnaje všechny, z ukončených a zrušených jen posledních 10 (stránka by jinak s časem jen zpomalovala).
+  const [active, past, games] = await Promise.all([
+    db.tournament.findMany({ where: { status: { in: ["UPCOMING", "LIVE"] } }, orderBy: { startsAt: "asc" }, include: inc }),
+    db.tournament.findMany({ where: { status: { notIn: ["UPCOMING", "LIVE"] } }, orderBy: { startsAt: "desc" }, take: 10, include: inc }),
     isAdmin ? db.game.findMany({ orderBy: { sortOrder: "asc" } }) : Promise.resolve([]),
   ]);
+  const items = [...active, ...past];
   // Aktivní nahoře, zrušené a skončené dole.
   const rank = (s: string) => (s === "UPCOMING" || s === "LIVE" ? 0 : 1);
   const sorted = [...items].sort((a, b) => rank(a.status) - rank(b.status));

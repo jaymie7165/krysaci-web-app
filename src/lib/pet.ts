@@ -27,11 +27,11 @@ export const STAGE_LEVELS = [1, 5, 10, 18, 28];
 export const stageFromLevel = (level: number) => STAGE_LEVELS.filter((l) => level >= l).length - 1;
 
 export const STAGE_NAMES: Record<Species, [string, string, string][]> = {
-  dragon: [["Dračí vejce", "Dračie vajce", "Dragon egg"], ["Dráče", "Dráča", "Hatchling"], ["Mladý drak", "Mladý drak", "Young drake"], ["Dračí válečník", "Dračí bojovník", "Dragon warrior"], ["Dračí král", "Dračí kráľ", "Dragon King"]],
-  cat: [["Koťátko", "Mačiatko", "Kitten"], ["Kočka", "Mačka", "Cat"], ["Lovec", "Lovec", "Hunter"], ["Mystická kočka", "Mystická mačka", "Mystic cat"], ["Kočičí král", "Mačací kráľ", "Cat King"]],
-  mushroom: [["Houbička", "Hubička", "Sporeling"], ["Malá houba", "Malá huba", "Little shroom"], ["Lesní strážce", "Lesný strážca", "Forest warden"], ["Starý hřib", "Starý hríb", "Elder shroom"], ["Houbí král", "Hubí kráľ", "Mushroom King"]],
-  butterfly: [["Motýlí larva", "Motýlia larva", "Larva"], ["Mladý motýl", "Mladý motýľ", "Young butterfly"], ["Motýl", "Motýľ", "Butterfly"], ["Éterický motýl", "Éterický motýľ", "Ethereal butterfly"], ["Motýlí královna", "Motýlia kráľovná", "Butterfly Queen"]],
-  bat: [["Netopýrek", "Netopierik", "Batling"], ["Mladý netopýr", "Mladý netopier", "Young bat"], ["Noční lovec", "Nočný lovec", "Night hunter"], ["Upíří strážce", "Upírsky strážca", "Vampire guard"], ["Netopýří král", "Netopierí kráľ", "Bat King"]],
+  dragon: [["Dračí vejce", "Dračie vajce", "Dragon egg"], ["Dráče", "Dráča", "Hatchling"], ["Mladý drak", "Mladý drak", "Young drake"], ["Dračí válečník", "Dračí bojovník", "Dragon warrior"], ["Kataklyzmatický dračí císař", "Kataklyzmatický dračí cisár", "Cataclysmic Dragon Emperor"]],
+  cat: [["Zatoulané kotě", "Zatúlané mačiatko", "Stray kitten"], ["Kočka", "Mačka", "Cat"], ["Lovec", "Lovec", "Hunter"], ["Mystická kočka", "Mystická mačka", "Mystic cat"], ["Kočičí božstvo", "Mačacie božstvo", "Feline deity"]],
+  mushroom: [["Houbička", "Hubička", "Sporeling"], ["Malá houba", "Malá huba", "Little shroom"], ["Lesní strážce", "Lesný strážca", "Forest warden"], ["Starý hřib", "Starý hríb", "Elder shroom"], ["Houbový král podhoubí", "Hubový kráľ podhubia", "King of the Mycelium"]],
+  butterfly: [["Motýl", "Motýľ", "Butterfly"], ["Křídlatý motýl", "Krídlatý motýľ", "Winged butterfly"], ["Éterický motýl", "Éterický motýľ", "Ethereal butterfly"], ["Hvězdný motýl", "Hviezdny motýľ", "Star butterfly"], ["Kosmická motýlí císařovna", "Kozmická motýlia cisárovná", "Cosmic Butterfly Empress"]],
+  bat: [["Netopýrek", "Netopierik", "Batling"], ["Mladý netopýr", "Mladý netopier", "Young bat"], ["Noční lovec", "Nočný lovec", "Night hunter"], ["Upíří strážce", "Upírsky strážca", "Vampire guard"], ["Nadvládce podsvětí", "Vládca podsvetia", "Overlord of the Underworld"]],
 };
 
 export function hoursHungry(lastFedAt: Date, now = new Date()) {
@@ -89,17 +89,11 @@ export const SHOP: ShopItem[] = [
   { key: "fireaura", slot: "aura", price: 250, label: ["Ohnivá aura", "Ohnivá aura", "Fire aura"] },
   { key: "darkaura", slot: "aura", price: 280, label: ["Temná aura", "Temná aura", "Dark aura"] },
 ];
-export const BG_SHOP = [
-  { key: "night", price: 100, label: ["Noční obloha", "Nočná obloha", "Night sky"] },
-  { key: "beach", price: 120, label: ["Pláž", "Pláž", "Beach"] },
-  { key: "neon", price: 160, label: ["Neonové město", "Neónové mesto", "Neon city"] },
-] as const;
-export const BG_CSS: Record<string, string> = {
-  meadow: "linear-gradient(180deg,#7ec8ff 0%,#c8f0ff 55%,#6bbf59 55%,#4a9a3e 100%)",
-  night: "linear-gradient(180deg,#0b1030 0%,#2a2060 60%,#1a1440 60%,#120e30 100%)",
-  beach: "linear-gradient(180deg,#ffb88a 0%,#ffe2b5 50%,#4fc3d9 50%,#e8d29a 78%)",
-  neon: "linear-gradient(180deg,#14002e 0%,#5a1a8a 55%,#ff2e9a 55%,#2a0a4a 100%)",
-};
+/** Každý druh má vlastní scénu (public/pets/bg/<druh>.webp). */
+export const bgUrl = (species: Species) => `/pets/bg/${species}.webp`;
+/** Cena dalšího slotu na peta. Hráč může nasbírat všech 5 druhů. */
+export const SLOT_PRICE = 1500;
+export const MAX_SLOTS = SPECIES.length;
 
 export type Gear = Partial<Record<Slot, string>>;
 export function parseGear(raw: string | null | undefined): Gear {

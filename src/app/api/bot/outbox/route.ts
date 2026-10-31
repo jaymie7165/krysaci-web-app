@@ -16,7 +16,7 @@ export async function GET(req: Request) {
   const denied = checkBotKey(req);
   if (denied) return denied;
 
-  const soon = new Date(Date.now() + 20 * 60 * 1000);
+  const soon = new Date(Date.now() + 10 * 60 * 1000);
   const matches = await db.esportsMatch.findMany({
     where: { status: "upcoming", startsAt: { gt: new Date(), lte: soon } },
     include: { picks: { select: { userId: true } } },
@@ -28,6 +28,18 @@ export async function GET(req: Request) {
       url: "/pickems",
       dedupeKey: `pickstart:${m.id}`,
     });
+  }
+
+  // Připomínka 10 minut před začátkem turnaje a customky (přihlášeným a pořadateli).
+  const [tours, customs] = await Promise.all([
+    db.tournament.findMany({ where: { status: "UPCOMING", startsAt: { gt: new Date(), lte: soon } }, include: { entries: { select: { userId: true } } } }),
+    db.custom.findMany({ where: { status: "UPCOMING", startsAt: { gt: new Date(), lte: soon } }, include: { entries: { select: { userId: true } } } }),
+  ]);
+  for (const t of tours) {
+    await notify([t.organizerId, ...t.entries.map((e) => e.userId)], { kind: "tournament", title: `Turnaj ${t.name} začíná za chvíli (do 10 minut)`, url: `/tournaments/${t.id}`, dedupeKey: `tstart:${t.id}` });
+  }
+  for (const c of customs) {
+    await notify([c.hostId, ...c.entries.map((e) => e.userId)], { kind: "custom", title: `Customka ${c.title} začíná za chvíli (do 10 minut)`, url: "/customs", dedupeKey: `cstart:${c.id}` });
   }
 
   // Pet má hlad: po 14 hodinách bez pamlsku (a než usne), jednou za každé nakrmení.

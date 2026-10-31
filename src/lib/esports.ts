@@ -141,16 +141,15 @@ export async function syncEsports(): Promise<{ saved: number; errors: string[] }
 }
 
 /** Synchronizace nejvýše jednou za 5 minut, spouští se při otevření stránky Esport. */
+let esportsSyncing = false;
 export async function maybeSyncEsports() {
-  try {
-    await Promise.race([
-      cached("esports:lastsync", 5 * 60, async () => {
-        const r = await syncEsports();
-        return { at: Date.now(), ...r };
-      }),
-      new Promise((resolve) => setTimeout(resolve, 5000)),
-    ]);
-  } catch {
-    /* stránka se zobrazí i bez synchronizace */
-  }
+  // Na pozadí: stránka se nezdržuje čekáním na cizí server, nová data se ukážou při dalším zobrazení.
+  if (esportsSyncing) return;
+  esportsSyncing = true;
+  cached("esports:lastsync", 5 * 60, async () => {
+    const r = await syncEsports();
+    return { at: Date.now(), ...r };
+  })
+    .catch(() => null)
+    .finally(() => { esportsSyncing = false; });
 }

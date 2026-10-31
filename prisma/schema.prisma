@@ -74,6 +74,7 @@ model User {
   badges            Badge[]
   notifications     Notification[]
   pet               Pet?
+  petStored         PetStored[]
 }
 
 model Game {
@@ -131,6 +132,7 @@ model Friendship {
   addressee   User         @relation("Addressee", fields: [addresseeId], references: [id], onDelete: Cascade)
 
   @@unique([requesterId, addresseeId])
+  @@index([addresseeId, status])
 }
 
 model LfgPost {
@@ -146,6 +148,7 @@ model LfgPost {
   author      User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
   game        Game      @relation(fields: [gameId], references: [id], onDelete: Cascade)
   joins       LfgJoin[]
+  announcedAt DateTime? // kdy to bot oznámil na Discordu
 
   @@index([gameId, open, createdAt])
 }
@@ -159,6 +162,7 @@ model LfgJoin {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([postId, userId])
+  @@index([userId])
 }
 
 model Tournament {
@@ -180,8 +184,10 @@ model Tournament {
   matches     TournamentMatch[]
   championName String?
   settledAt   DateTime?
+  announcedAt DateTime? // kdy to bot oznámil na Discordu
 
   @@index([startsAt])
+  @@index([status, startsAt])
 }
 
 model TournamentEntry {
@@ -195,6 +201,7 @@ model TournamentEntry {
   team         TournamentTeam? @relation(fields: [teamId], references: [id], onDelete: SetNull)
 
   @@unique([tournamentId, userId])
+  @@index([userId])
 }
 
 /// Tým přihlášený do turnaje. Členové jsou záznamy TournamentEntry s teamId.
@@ -225,8 +232,10 @@ model Custom {
   game        Game          @relation(fields: [gameId], references: [id], onDelete: Cascade)
   host        User          @relation(fields: [hostId], references: [id], onDelete: Cascade)
   entries     CustomEntry[]
+  announcedAt DateTime? // kdy to bot oznámil na Discordu
 
   @@index([startsAt])
+  @@index([status, startsAt])
 }
 
 model CustomEntry {
@@ -238,6 +247,7 @@ model CustomEntry {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([customId, userId])
+  @@index([userId])
 }
 
 model Ticket {
@@ -305,10 +315,11 @@ model LinkedAccount {
   createdAt     DateTime @default(now())
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, provider])
+  @@unique([userId, provider, externalId]) // víc Riot účtů na hráče; Steam jen jeden (hlídá kód)
   // Neověřené propojení nesmí blokovat skutečného majitele, proto tu není unique.
   // Jeden OVĚŘENÝ vlastník na účet se hlídá v kódu.
   @@index([provider, externalId])
+  @@index([userId, provider])
 }
 
 /// Krátkodobá cache odpovědí externích API (šetří limity Riot / Steam).
@@ -386,6 +397,7 @@ model News {
   pinned    Boolean  @default(false)
   createdAt DateTime @default(now())
   author    User?    @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  announcedAt DateTime? // kdy to bot oznámil na Discordu
 
   @@index([pinned, createdAt])
 }
@@ -490,10 +502,26 @@ model Pet {
   bg          String?
   tint        String?
   gear        String   @default("{}")
+  slots       Int      @default(1) // kolik petů smí hráč vlastnit (další slot stojí mince)
   lastSyncAt  DateTime?
   socialDay   String   @default("")
   socialCount Int      @default(0)
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/// Další pet ve sbírce (aktivní pet je v tabulce Pet). Odpočívající pet nehladoví: hungerMs je doba bez pamlsku v okamžiku uložení.
+model PetStored {
+  id        String   @id @default(cuid())
+  userId    String
+  species   String
+  name      String
+  xp        Int      @default(0)
+  hungerMs  Int      @default(0)
+  gear      String   @default("{}")
+  adoptedAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, species])
 }
 
 /// Zápas, za který už hráč dostal odměnu (brání dvojímu započtení).
@@ -506,6 +534,7 @@ model PetGame {
   createdAt DateTime @default(now())
 
   @@unique([userId, matchId])
+  @@index([userId])
 }
 
 model PetItem {

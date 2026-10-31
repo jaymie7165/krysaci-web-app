@@ -25,6 +25,8 @@ export async function notify(userId: string | string[], n: N) {
 
 /** Pošle zprávu do Discord kanálu přes webhook (DISCORD_WEBHOOK_URL). Bez nastavení nedělá nic. */
 export async function webhook(title: string, description: string, url?: string) {
+  // Když oznamuje bot (DISCORD_USE_BOT=1), webhook by zprávy zdvojil.
+  if (process.env.DISCORD_USE_BOT === "1") return;
   const hook = process.env.DISCORD_WEBHOOK_URL;
   if (!hook) return;
   const base = (process.env.NEXTAUTH_URL || process.env.AUTH_URL || "").replace(/\/$/, "");

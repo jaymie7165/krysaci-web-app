@@ -25,10 +25,8 @@ export async function GET(req: Request) {
     profileUrl: profile?.profileUrl ?? `https://steamcommunity.com/profiles/${steamId}`,
     verified: true, // Steam ověřil, že účet patří přihlášenému uživateli
   };
-  await db.linkedAccount.upsert({
-    where: { userId_provider: { userId: session.user.id, provider: "steam" } },
-    update: data,
-    create: { userId: session.user.id, provider: "steam", ...data },
-  });
+  const mine = await db.linkedAccount.findFirst({ where: { userId: session.user.id, provider: "steam" } });
+  if (mine) await db.linkedAccount.update({ where: { id: mine.id }, data });
+  else await db.linkedAccount.create({ data: { userId: session.user.id, provider: "steam", ...data } });
   return back("ok=steam");
 }
