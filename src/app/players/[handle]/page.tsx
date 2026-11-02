@@ -8,6 +8,7 @@ import GameSelect from "@/components/GameSelect";
 import LinkedAccountsSection from "@/components/LinkedAccountsSection";
 import ShareCard from "@/components/ShareCard";
 import DuoSection from "@/components/DuoSection";
+import PlaytimeSection from "@/components/PlaytimeSection";
 import { syncDuoGames } from "@/lib/duo";
 import { getTwitchLive } from "@/lib/twitch";
 import { getKickLive } from "@/lib/kick";
@@ -130,6 +131,8 @@ export default async function PlayerPage({ params }: { params: Promise<{ handle:
       <LinkedAccountsSection userId={player.id} locale={locale} isMe={isMe} />
 
       <DuoSection userId={player.id} locale={locale} isMe={isMe} />
+
+      <PlaytimeSection userId={player.id} locale={locale} />
 
       <section>
         <h2 className="mb-3 text-2xl font-semibold">{t("stats")}</h2>

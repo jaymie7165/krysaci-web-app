@@ -42,3 +42,29 @@ async function load(name: string, tag: string): Promise<ValorantRank> {
 export function getValorantRank(name: string, tag: string) {
   return cached(`val:${name.toLowerCase()}#${tag.toLowerCase()}`, 900, () => load(name, tag));
 }
+
+/** Poslední hry hráče pro odměny peta. Odpověď se čte opatrně (v3 i v4 formát HenrikDev). */
+export async function getValorantMatches(name: string, tag: string): Promise<{ id: string; endedAt: number; ok: boolean }[]> {
+  const key = process.env.HENRIK_API_KEY;
+  if (!key) return [];
+  const res = await fetch(`https://api.henrikdev.xyz/valorant/v3/matches/eu/${encodeURIComponent(name)}/${encodeURIComponent(tag)}?size=5`, {
+    headers: { Authorization: key },
+    cache: "no-store",
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!res.ok) throw new Error(`Valorant API ${res.status}`);
+  const j = await res.json();
+  const out: { id: string; endedAt: number; ok: boolean }[] = [];
+  for (const m of j?.data ?? []) {
+    const md = m?.metadata ?? {};
+    const id = md.matchid ?? md.match_id;
+    if (!id) continue;
+    const startRaw = md.game_start ?? md.started_at;
+    const start = typeof startRaw === "number" ? startRaw * (startRaw < 1e12 ? 1000 : 1) : Date.parse(String(startRaw ?? ""));
+    const len = Number(md.game_length ?? md.game_length_in_ms ?? 0); // ms
+    const rounds = Number(md.rounds_played ?? (Array.isArray(m?.rounds) ? m.rounds.length : 0));
+    if (!Number.isFinite(start)) continue;
+    out.push({ id: String(id), endedAt: start + len, ok: rounds >= 5 || (rounds === 0 && len >= 5 * 60 * 1000) });
+  }
+  return out;
+}

@@ -55,6 +55,14 @@ const games = [
     description: "Hospodská simulace, kterou můžete hrát s kamarády.",
     sortOrder: 6,
   },
+  {
+    slug: "fivem",
+    name: "FiveM GTA RP",
+    category: "Roleplay / Multiplayer",
+    imageUrl: "/games/fivem.jpg",
+    description: "GTA V roleplay na komunitních serverech (SkyRP, Pohodáři, GenK a další). U hráčů ukážeme, na kterém serveru hrají a kolik hodin tam mají.",
+    sortOrder: 7,
+  },
 ];
 
 for (const g of games) {

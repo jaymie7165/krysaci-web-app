@@ -180,7 +180,7 @@ Každý přihlášený hráč si vybere peta (`/pet`). Za odehrané hry z **ově
 (hra s přítelem nebo spoluhráčem z LFG/customky/turnaje dává dvojnásobek XP a mincí, 5× denně). Hry se ověřují přes Riot
 Match-v5 (`RIOT_API_KEY`), nejvýš jednou za 5 minut při otevření stránky `/pet`. Nekrmený pet postupně vypadá hůř
 (po 16 h o stupeň, po 48 h spí), XP se neztrácí. Aplikace pro počítač má animovaný loading a v liště „Pet na ploše“
-(malé okno `/pet/widget`). Pravidla a čísla jsou v `src/lib/pet.ts`.
+(malé okno `/pet/widget`). Pet krmí i Valorant (1 hra = 1 odměna, `HENRIK_API_KEY`) a ostatní Steam hry (30 min = 1 odměna, max. 8× denně). Pravidla a čísla jsou v `src/lib/pet.ts`.
 
 Pet je z hotových obrázků (`public/pets/*.webp`, 5 druhů × 5 stupňů, doplňky v `public/pets/items`). Obrázky se připravují
 skriptem `scripts/process-pets.py` ze zdrojových PNG. Doplňky se skládají jako vrstvy podle kotev v `ANCHORS` / `ITEM_FIT`

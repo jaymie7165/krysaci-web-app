@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { getT, pick } from "@/lib/i18n";
+import { sinceText, totalText } from "@/lib/duration";
 import { getLiveNow } from "@/lib/presence";
 import { getTwitchLive } from "@/lib/twitch";
 import { getKickLive } from "@/lib/kick";
@@ -47,8 +48,14 @@ export default async function NowPage() {
           {[...byGame.entries()].map(([g, list]) => (
             <li key={g}>
               <span className="font-medium">{g}</span> <span className="text-slate-500">({list.length})</span>
-              <div className="text-slate-300">
-                {list.map((e, i) => (<span key={e.userId}>{i > 0 && ", "}<Link href={`/players/${e.handle}`} className="hover:text-violet-300">{e.username}</Link></span>))}
+              <div className="space-y-0.5 text-slate-300">
+                {list.map((e) => (
+                  <p key={e.userId} className="flex flex-wrap items-baseline gap-x-2">
+                    <Link href={`/players/${e.handle}`} className="hover:text-violet-300">{e.username}</Link>
+                    {e.detail && <span className="text-xs text-slate-400">{e.detail}</span>}
+                    {(sinceText(e.since, locale) || totalText(e.totalSec, locale)) && <span className="text-xs text-slate-500">⏱ {[sinceText(e.since, locale), totalText(e.totalSec, locale)].filter(Boolean).join(" · ")}</span>}
+                  </p>
+                ))}
               </div>
             </li>
           ))}

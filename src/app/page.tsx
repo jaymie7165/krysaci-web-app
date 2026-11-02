@@ -6,6 +6,7 @@ import { auth, signIn } from "@/lib/auth";
 import { getT, pick, type Locale } from "@/lib/i18n";
 import { DEFAULT_PLATFORM, PLATFORMS, peekLolProfile } from "@/lib/riot";
 import { getLiveNow, normGame, type LiveEntry } from "@/lib/presence";
+import { sinceText, totalText } from "@/lib/duration";
 import GameImage from "@/components/GameImage";
 import LolSearch from "@/components/LolSearch";
 import RankTag from "@/components/RankTag";
@@ -293,6 +294,9 @@ export default async function Home() {
                       <span className="block truncate text-sm font-semibold text-white">{e.username}</span>
                       <span className="block truncate text-xs text-pulse">{e.game}</span>
                       {e.detail && <span className="block truncate text-xs text-slate-400">{e.detail}</span>}
+                      {(sinceText(e.since, locale) || totalText(e.totalSec, locale)) && (
+                        <span className="block truncate text-xs text-slate-500">⏱ {[sinceText(e.since, locale), totalText(e.totalSec, locale)].filter(Boolean).join(" · ")}</span>
+                      )}
                     </span>
                   </Link>
                 </li>

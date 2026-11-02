@@ -139,3 +139,15 @@ export async function getSteamNowPlaying(steamIds: string[]): Promise<Record<str
     return out;
   });
 }
+
+/** Všechny hry s časem za posledních 14 dní (jen veřejný profil). Pro odměny peta: porovnává se rozdíl mezi kontrolami. */
+export async function getSteamRecentAll(steamId: string): Promise<{ appId: number; name: string; minutes2w: number }[] | null> {
+  const key = process.env.STEAM_API_KEY;
+  if (!key) return null;
+  const r = await fetch(`https://api.steampowered.com/IPlayerService/GetRecentlyPlayedGames/v1/?key=${key}&steamid=${steamId}`, { cache: "no-store", signal: AbortSignal.timeout(8000) })
+    .then((x) => x.json())
+    .catch(() => null);
+  const games = r?.response?.games;
+  if (!Array.isArray(games)) return null; // neveřejný profil nebo chyba
+  return games.map((g: { appid: number; name: string; playtime_2weeks?: number }) => ({ appId: g.appid, name: g.name, minutes2w: g.playtime_2weeks ?? 0 }));
+}

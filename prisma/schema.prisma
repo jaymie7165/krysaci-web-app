@@ -503,6 +503,8 @@ model Pet {
   bg          String?
   tint        String?
   gear        String   @default("{}")
+  steamDay    String   @default("")
+  steamCount  Int      @default(0) // kolik půlhodin v jiných Steam hrách se dnes započítalo
   slots       Int      @default(1) // kolik petů smí hráč vlastnit (další slot stojí mince)
   lastSyncAt  DateTime?
   socialDay   String   @default("")
@@ -560,4 +562,27 @@ model DuoGame {
 
   @@unique([userId, matchId])
   @@index([userId, playedAt])
+}
+
+/// Odehraný čas ve Steam hře při poslední kontrole (z toho se počítají půlhodiny pro peta).
+model SteamPlay {
+  id      String @id @default(cuid())
+  userId  String
+  appId   Int
+  minutes Int    @default(0)
+  carry   Int    @default(0) // minuty, které ještě nedaly celou půlhodinu
+
+  @@unique([userId, appId])
+}
+
+/// Čas strávený ve hře, jak ho viděl bot (Discord aktivita). Jen hráči, kteří mají aktivitu povolenou.
+model PlayTime {
+  id       String   @id @default(cuid())
+  userId   String
+  gameKey  String
+  gameName String
+  seconds  Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, gameKey])
 }

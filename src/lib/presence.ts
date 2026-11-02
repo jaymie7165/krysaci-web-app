@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { DEFAULT_PLATFORM, getLiveBrief } from "@/lib/riot";
 import { getSteamNowPlaying } from "@/lib/steam";
+import { fivemServer, isFivem, playKey } from "@/lib/fivem";
 
 export type LiveEntry = {
   userId: string;
@@ -9,8 +10,11 @@ export type LiveEntry = {
   avatarUrl: string | null;
   game: string; // název hry
   source: "lol" | "steam" | "discord";
-  detail?: string; // např. "Ranked Solo/Duo, Ahri"
-  since?: number;
+  detail?: string; // např. "Ranked Solo/Duo, Ahri" nebo server ve FiveM
+  details?: string | null; // surový text hry (pro výpočet klíče času)
+  state?: string | null;
+  since?: number; // kdy hra začala (ms)
+  totalSec?: number; // celkový čas ve hře, který web zaznamenal
 };
 
 const STALE_MS = 10 * 60 * 1000; // data z bota starší než 10 minut ignorujeme
@@ -22,7 +26,7 @@ function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
   return Promise.race([p.catch(() => fallback), new Promise<T>((r) => setTimeout(() => r(fallback), ms))]);
 }
 
-type DiscordSnapshot = { updatedAt: number; players: { discordId: string; game: string | null }[] };
+type DiscordSnapshot = { updatedAt: number; players: { discordId: string; game: string | null; details?: string | null; state?: string | null; startedAt?: number | null }[] };
 
 /**
  * Kdo právě hraje. Zdroje podle priority: LoL živá hra, Steam, Discord (posílá bot).
@@ -43,10 +47,15 @@ async function computeLiveNow(): Promise<LiveEntry[]> {
   const row = await db.statCache.findUnique({ where: { key: "presence:discord" } }).catch(() => null);
   const snap = row?.data as DiscordSnapshot | undefined;
   if (snap && Date.now() - snap.updatedAt < STALE_MS) {
-    const byDiscord = new Map(snap.players.filter((p) => p.game).map((p) => [p.discordId, p.game as string]));
+    const byDiscord = new Map(snap.players.filter((p) => p.game).map((p) => [p.discordId, p]));
     for (const u of users) {
-      const g = byDiscord.get(u.discordId);
-      if (g) out.set(u.id, { ...base(u), game: g, source: "discord" });
+      const p = byDiscord.get(u.discordId);
+      if (p?.game) {
+        // details/state posílá samotná hra (Competitive, název FiveM serveru...)
+        const server = isFivem(p.game) ? fivemServer(p.details, p.state) : null;
+        const detail = server ? `Server ${server}` : [p.details, p.state].filter(Boolean).join(" · ") || undefined;
+        out.set(u.id, { ...base(u), game: p.game, source: "discord", detail, since: p.startedAt ?? undefined, details: p.details, state: p.state });
+      }
     }
   }
 
@@ -56,7 +65,12 @@ async function computeLiveNow(): Promise<LiveEntry[]> {
   const now = await withTimeout(getSteamNowPlaying(steamIds), 2500, {} as Record<string, string>);
   for (const u of steamUsers as U[]) {
     const sid = u.linkedAccounts.find((a: { provider: string }) => a.provider === "steam")!.externalId;
-    if (now[sid]) out.set(u.id, { ...base(u), game: now[sid], source: "steam" });
+    if (now[sid]) {
+      const d = out.get(u.id);
+      // Když Discord ukazuje stejnou hru, zachováme jeho podrobnosti (režim, server) a čas začátku.
+      const same = d && normGame(d.game) === normGame(now[sid]);
+      out.set(u.id, { ...base(u), game: now[sid], source: "steam", detail: same ? d.detail : undefined, since: same ? d.since : undefined, details: same ? d.details : undefined, state: same ? d.state : undefined });
+    }
   }
 
   // 3. LoL živá hra (jen ověřené Riot účty, nejvýš 25 kvůli limitům Riotu)
@@ -87,8 +101,31 @@ async function computeLiveNow(): Promise<LiveEntry[]> {
     }
   }
 
-  return [...out.values()];
+  const list = [...out.values()];
+
+  // Hra, u které Discord ani Riot neřekly začátek: počítáme od chvíle, kdy jsme hráče u ní poprvé zahlédli.
+  const present = new Set(list.map((e) => e.userId));
+  for (const k of [...seen.keys()]) if (!present.has(k.split("|")[0])) seen.delete(k);
+  for (const e of list) {
+    const k = `${e.userId}|${normGame(e.game)}`;
+    for (const o of [...seen.keys()]) if (o.startsWith(e.userId + "|") && o !== k) seen.delete(o);
+    if (!seen.has(k)) seen.set(k, Date.now());
+    e.since ??= seen.get(k);
+  }
+
+  // Celkový čas ve hře (z dat bota)
+  if (list.length) {
+    const rows = await db.playTime.findMany({ where: { userId: { in: list.map((e) => e.userId) } }, select: { userId: true, gameKey: true, seconds: true } }).catch(() => []);
+    const tot = new Map(rows.map((r: { userId: string; gameKey: string; seconds: number }) => [`${r.userId}|${r.gameKey}`, r.seconds]));
+    for (const e of list) {
+      const sec = tot.get(`${e.userId}|${playKey(e.game, e.details, e.state).key}`);
+      if (sec) e.totalSec = sec;
+    }
+  }
+  return list;
 }
+
+const seen = new Map<string, number>();
 
 /**
  * Kdo právě hraje, s pamětí na 30 s: web se nemusí při každém zobrazení ptát Steamu a Riotu.

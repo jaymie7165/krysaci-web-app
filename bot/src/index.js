@@ -222,10 +222,16 @@ client.on("interactionCreate", async (i) => {
 async function pushPresence() {
   const guild = client.guilds.cache.get(env.GUILD_ID) ?? client.guilds.cache.first();
   if (!guild) return;
-  const players = guild.members.cache.filter((m) => !m.user.bot).map((m) => ({
-    discordId: m.id,
-    game: m.presence?.activities.find((a) => a.type === 0)?.name?.slice(0, 80) ?? null,
-  }));
+  const players = guild.members.cache.filter((m) => !m.user.bot).map((m) => {
+    const a = m.presence?.activities.find((x) => x.type === 0); // "Playing"
+    return {
+      discordId: m.id,
+      game: a?.name?.slice(0, 80) ?? null,
+      details: a?.details?.slice(0, 120) ?? null, // např. "Competitive" nebo server ve FiveM
+      state: a?.state?.slice(0, 120) ?? null,
+      startedAt: a?.timestamps?.start ? new Date(a.timestamps.start).getTime() : null,
+    };
+  });
   await api("/api/bot/presence", { method: "POST", body: { players: [...players.values()] } });
 }
 

@@ -122,6 +122,8 @@ export default async function PetPage({ searchParams }: { searchParams: Promise<
           <section className="card space-y-2 p-4 text-sm text-slate-300">
             <h2 className="font-bold text-white">{L("Jak získat odměny", "Ako získať odmeny", "How to earn")}</h2>
             <p>🎮 {L(`Odehraná hra v LoLu: ${GAME_REWARD.treats} pamlsků, ${GAME_REWARD.xp} XP, ${GAME_REWARD.coins} mincí.`, `Odohraná hra v LoLe: ${GAME_REWARD.treats} maškŕt, ${GAME_REWARD.xp} XP, ${GAME_REWARD.coins} mincí.`, `A finished LoL game: ${GAME_REWARD.treats} treats, ${GAME_REWARD.xp} XP, ${GAME_REWARD.coins} coins.`)}</p>
+            <p>🎯 {L("Valorant: jedna odehraná hra dává stejnou odměnu jako hra v LoLu (ověřený Riot účet).", "Valorant: jedna odohraná hra dáva rovnakú odmenu ako hra v LoLe (overený Riot účet).", "Valorant: one finished game gives the same reward as an LoL game (verified Riot account).")}</p>
+            <p>🕹️ {L("Ostatní hry na Steamu: každých odehraných 30 minut dává stejnou odměnu, nejvýš 8× denně (veřejný Steam profil).", "Ostatné hry na Steame: každých odohraných 30 minút dáva rovnakú odmenu, najviac 8× denne (verejný Steam profil).", "Other Steam games: every 30 minutes played gives the same reward, up to 8× a day (public Steam profile).")}</p>
             <p>🤝 {L("Hra s někým z komunity (přítel nebo spoluhráč z LFG, customky, turnaje) dává dvojnásobek XP a mincí, 5× denně.", "Hra s niekým z komunity (priateľ alebo spoluhráč z LFG, customky, turnaja) dáva dvojnásobok XP a mincí, 5× denne.", "A game with someone from the community (friend or teammate from LFG, customs, tournaments) gives double XP and coins, 5× a day.")}</p>
             {!riot?.verified && (
               <p className="rounded-lg bg-gold/10 p-2 text-gold">
