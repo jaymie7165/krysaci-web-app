@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { syncPetGames } from "@/lib/petSync";
+import { syncDuoGames } from "@/lib/duo";
 
 export const dynamic = "force-dynamic";
 
@@ -16,5 +17,6 @@ export async function POST(req: Request) {
   const host = req.headers.get("host");
   if (origin && host && new URL(origin).host !== host) return NextResponse.json({ error: "forbidden" }, { status: 403 });
   const r = await syncPetGames(s.user.id, { force: true }).catch(() => ({ gained: 0, error: "x" }));
+  void syncDuoGames(s.user.id, 60_000).catch(() => null); // statistiky "kdo s kým" po hře
   return NextResponse.json(r);
 }

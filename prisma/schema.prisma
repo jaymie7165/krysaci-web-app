@@ -75,6 +75,7 @@ model User {
   notifications     Notification[]
   pet               Pet?
   petStored         PetStored[]
+  duoGames          DuoGame[]
 }
 
 model Game {
@@ -543,4 +544,20 @@ model PetItem {
   key    String
 
   @@unique([userId, key])
+}
+
+/// Hra hráče, ve které byli další členové komunity (ověřené Riot účty). Z toho web skládá "kdo s kým vyhrává".
+model DuoGame {
+  id       String   @id @default(cuid())
+  userId   String
+  matchId  String
+  win      Boolean
+  queue    Int      @default(0)
+  playedAt DateTime
+  mates    String   @default("[]") // JSON: userId spoluhráčů ze stejného týmu
+  foes     String   @default("[]") // JSON: userId protihráčů z komunity
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, matchId])
+  @@index([userId, playedAt])
 }

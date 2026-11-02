@@ -606,3 +606,34 @@ export async function getMatchBriefs(puuid: string, platform: string, known: Set
   }
   return out;
 }
+
+/** Zápas pro statistiky "kdo s kým": výsledek a složení týmů. Remaky se vynechávají. */
+export type DuoMatch = { id: string; win: boolean; queue: number; playedAt: number; team: string[]; foes: string[] };
+
+export async function getDuoMatches(puuid: string, platform: string, known: Set<string>, max = 8): Promise<DuoMatch[]> {
+  const region = PLATFORMS[platform]?.region ?? "europe";
+  const ids = await riot<string[]>(region, `/lol/match/v5/matches/by-puuid/${puuid}/ids?start=0&count=20`);
+  const out: DuoMatch[] = [];
+  for (const id of ids.filter((i) => !known.has(i)).slice(0, max)) {
+    try {
+      const m = await riot<{
+        info: { queueId: number; gameEndTimestamp?: number; gameStartTimestamp: number; gameDuration: number; participants: { puuid: string; win: boolean; teamId: number; gameEndedInEarlySurrender?: boolean }[] };
+      }>(region, `/lol/match/v5/matches/${id}`);
+      const me = m.info.participants.find((p) => p.puuid === puuid);
+      if (!me) continue;
+      const dur = m.info.gameDuration > 100000 ? Math.round(m.info.gameDuration / 1000) : m.info.gameDuration;
+      if (me.gameEndedInEarlySurrender || dur < 300) continue;
+      out.push({
+        id,
+        win: me.win,
+        queue: m.info.queueId,
+        playedAt: m.info.gameEndTimestamp ?? m.info.gameStartTimestamp + dur * 1000,
+        team: m.info.participants.filter((p) => p.teamId === me.teamId && p.puuid !== puuid).map((p) => p.puuid),
+        foes: m.info.participants.filter((p) => p.teamId !== me.teamId).map((p) => p.puuid),
+      });
+    } catch {
+      /* zkusí se příště */
+    }
+  }
+  return out;
+}

@@ -7,6 +7,8 @@ import { sendFriendRequest, updateProfile, saveGameProfile } from "@/app/actions
 import GameSelect from "@/components/GameSelect";
 import LinkedAccountsSection from "@/components/LinkedAccountsSection";
 import ShareCard from "@/components/ShareCard";
+import DuoSection from "@/components/DuoSection";
+import { syncDuoGames } from "@/lib/duo";
 import { getTwitchLive } from "@/lib/twitch";
 import { getKickLive } from "@/lib/kick";
 
@@ -51,6 +53,8 @@ export default async function PlayerPage({ params }: { params: Promise<{ handle:
   ];
 
   const isMe = session?.user?.id === player.id;
+  // Nové hry se dotahují na pozadí (jen z vlastního profilu a nejvýš jednou za 15 minut), stránka na ně nečeká.
+  if (isMe) void syncDuoGames(player.id).catch(() => null);
   const games = isMe ? await db.game.findMany({ orderBy: { sortOrder: "asc" } }) : [];
   const friendship =
     session?.user && !isMe
@@ -124,6 +128,8 @@ export default async function PlayerPage({ params }: { params: Promise<{ handle:
       )}
 
       <LinkedAccountsSection userId={player.id} locale={locale} isMe={isMe} />
+
+      <DuoSection userId={player.id} locale={locale} isMe={isMe} />
 
       <section>
         <h2 className="mb-3 text-2xl font-semibold">{t("stats")}</h2>
